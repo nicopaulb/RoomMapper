@@ -6,7 +6,8 @@ UART_HandleTypeDef huart1;
 
 extern uint8_t *buf;
 
-int main(int, char **)
+
+int main()
 {
     printf("Hello rplidar!\n");
 
