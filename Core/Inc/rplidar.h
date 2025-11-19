@@ -37,7 +37,7 @@ typedef struct __attribute__((packed))
 {
     uint8_t start : 2;
     uint8_t quality : 6;
-    uint8_t check : 1;
+    uint16_t check : 1;
     uint16_t angle : 15;
     uint16_t distance;
 } rplidar_measurement_t;

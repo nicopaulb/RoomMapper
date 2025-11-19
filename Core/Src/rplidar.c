@@ -8,7 +8,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include "stm32f4xx_hal.h"
 #include "rplidar.h"
 
@@ -214,7 +213,6 @@ static bool _ParseResponse(uint8_t *response, uint16_t size)
 	switch (rpl_resp_type)
 	{
 	case RESPONSE_INFO:
-		printf("Response parsed\n");
 		if (size == sizeof(rplidar_info_t))
 		{
 			rplidar_info_t *info = (rplidar_info_t *)response;
@@ -240,7 +238,7 @@ static bool _ParseResponse(uint8_t *response, uint16_t size)
 		break;
 	case RESPONSE_CONF:
 	{
-		uint32_t type = response[0] << 24 | response[1] << 16 | response[2] << 8 | response[3];
+		uint32_t type = response[3] << 24 | response[2] << 16 | response[1] << 8 | response[0];
 		RPLIDAR_OnConfiguration(type, response + 4, size - 4);
 		return true;
 	}
@@ -253,7 +251,6 @@ static bool _ParseResponse(uint8_t *response, uint16_t size)
 		}
 	}
 
-	printf("failed %u\n", rpl_resp_type);
 	return false;
 }
 
