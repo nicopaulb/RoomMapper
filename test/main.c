@@ -12,7 +12,8 @@ typedef enum
     cb_RPLIDAR_OnHealth,
     cb_RPLIDAR_OnSamplerate,
     cb_RPLIDAR_OnConfiguration,
-    cb_RPLIDAR_OnSingleMeasurement
+    cb_RPLIDAR_OnSingleMeasurement,
+    cb_RPLIDAR_OnDenseMeasurements
 } callback_type_t;
 
 UART_HandleTypeDef huart1;
@@ -26,19 +27,19 @@ static void test_health_request(void);
 static void test_samplerate_request(void);
 static void test_configuration_request(void);
 static void test_scan_request(void);
+static void test_scan_express_request(void);
 
 int main()
 {
     printf("START TESTS\n");
     RPLIDAR_Init(&huart1);
 
-    RPLIDAR_StartScanExpress();
-
-    test_device_info_request();
-    test_health_request();
-    test_samplerate_request();
-    test_configuration_request();
-    test_scan_request();
+    // test_device_info_request();
+    // test_health_request();
+    // test_samplerate_request();
+    // test_configuration_request();
+    // test_scan_request();
+    test_scan_express_request();
 }
 
 static void test_device_info_request(void)
@@ -211,4 +212,49 @@ void RPLIDAR_OnSingleMeasurement(rplidar_measurement_t *measurement)
     assert(measurement->angle == ANGLE);
     assert(measurement->distance == DISTANCE);
     cb_type = cb_RPLIDAR_OnSingleMeasurement;
+}
+
+static void test_scan_express_request(void)
+{
+    printf("test_scan_express_request : ");
+    cb_type = None;
+
+    // Send info descriptor
+    buf[head++] = 0xA5;
+    buf[head++] = 0x5A;
+    buf[head++] = 0x54;
+    buf[head++] = 0x00;
+    buf[head++] = 0x00;
+    buf[head++] = 0x40;
+    buf[head++] = 0x85;
+#define SYNC_FLAG_EXPR 0xA5
+#define ANGLE_EXPR 1200
+#define START_FLAG_EXPR 0x01
+#define DISTANCE_EXPR 1000
+    buf[head++] = SYNC_FLAG_EXPR & 0xF0;
+    buf[head++] = (SYNC_FLAG_EXPR & 0x0F) << 4;
+    buf[head++] = ANGLE_EXPR & 0xFF;
+    buf[head++] = ((ANGLE_EXPR & 0x7F00) >> 8) | (0x01 << 7);
+    for (uint8_t i = 0; i < 40; i++)
+    {
+        buf[head++] = (DISTANCE_EXPR + i) & 0xFF;
+        buf[head++] = ((DISTANCE_EXPR + i) & 0xFF00) >> 8;
+    }
+    HAL_UARTEx_RxEventCallback(&huart1, head);
+    assert(cb_type == cb_RPLIDAR_OnDenseMeasurements);
+    printf("SUCCESS\n");
+}
+
+void RPLIDAR_OnDenseMeasurements(rplidar_dense_measurements_t *measurement)
+{
+    assert(measurement->sync1 == 0xA);
+    assert(measurement->sync2 == 0x5);
+    assert(measurement->angle == ANGLE_EXPR);
+    assert(measurement->start == START_FLAG_EXPR);
+    for (uint8_t i = 0; i < 40; i++)
+    {
+        assert(measurement->distance[i] == DISTANCE_EXPR + i);
+    }
+
+    cb_type = cb_RPLIDAR_OnDenseMeasurements;
 }
