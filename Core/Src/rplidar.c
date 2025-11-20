@@ -2,7 +2,7 @@
  * rplidar.c
  *
  *  Created on: Nov 17, 2025
- *      Author: nicob
+ *      Author: Nicolas BESNARD
  */
 
 #include <string.h>
@@ -30,10 +30,13 @@
 #define RESP_RATE 0x15
 #define RESP_CONF 0x20
 #define RESP_SCAN 0x81
+#define RESP_SCAN_EXPR 0x85
 
 #define BUFFER_RX_SIZE 2048
 #define BUFFER_RESP_SIZE 128
 #define BUFFER_DESC_SIZE 7
+
+#define REQ_CONF_PAYLOAD_MAX 16
 
 typedef enum parser_state
 {
@@ -50,7 +53,8 @@ typedef enum response_type
 	RESPONSE_HEALTH,
 	RESPONSE_RATE,
 	RESPONSE_CONF,
-	RESPONSE_SCAN
+	RESPONSE_SCAN,
+	RESPONSE_SCAN_EXPRESS
 } response_type_t;
 
 static UART_HandleTypeDef *rpl_huart;
@@ -64,46 +68,74 @@ static void _ParseRX(uint8_t *data, uint16_t len);
 static parser_state_t _ParseDescriptor(uint8_t *buf);
 static response_type_t _ParseRspType(uint8_t type);
 static bool _ParseResponse(uint8_t *response, uint16_t size);
-static void _SendRequest(uint8_t cmd);
+static bool _SendRequest(uint8_t cmd);
+static uint8_t _ComputeChecksum(uint8_t *data, uint16_t size);
 
-HAL_StatusTypeDef RPLIDAR_Init(UART_HandleTypeDef *huart)
+bool RPLIDAR_Init(UART_HandleTypeDef *huart)
 {
 	if (!huart)
 	{
-		return HAL_ERROR;
+		return false;
 	}
 
 	rpl_huart = huart;
 
 	if (HAL_UARTEx_ReceiveToIdle_DMA(rpl_huart, rpl_rx_buf, BUFFER_RX_SIZE) != HAL_OK)
 	{
-		return HAL_ERROR;
+		return false;
 	}
 
 	// Disable half transfer IT
 	__HAL_DMA_DISABLE_IT(rpl_huart->hdmarx, DMA_IT_HT);
 
-	return HAL_OK;
+	return true;
 }
 
-void RPLIDAR_StartScan(void)
+bool RPLIDAR_StartScan(void)
 {
-	_SendRequest(REQ_SCAN);
+	return _SendRequest(REQ_SCAN);
 }
 
-void RPLIDAR_Stop(void)
+bool RPLIDAR_StartScanExpress(void)
 {
-	_SendRequest(REQ_STOP);
+	uint8_t packet[9] = {START_FLAG, REQ_SCAN_EXPR, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22};
+	packet[8] = _ComputeChecksum(packet, 8);
+	return (HAL_UART_Transmit_IT(rpl_huart, packet, sizeof(packet)) == HAL_OK);
 }
 
-void RPLIDAR_RequestDeviceInfo(void)
+bool RPLIDAR_Stop(void)
 {
-	_SendRequest(REQ_INFO);
+	return _SendRequest(REQ_STOP);
 }
 
-void RPLIDAR_RequestHealth(void)
+bool RPLIDAR_RequestDeviceInfo(void)
 {
-	_SendRequest(REQ_HEALTH);
+	return _SendRequest(REQ_INFO);
+}
+
+bool RPLIDAR_RequestHealth(void)
+{
+	return _SendRequest(REQ_HEALTH);
+}
+
+bool RPLIDAR_RequestConfiguration(uint32_t type, uint8_t *payload, uint16_t payload_size)
+{
+	uint8_t packet[REQ_CONF_PAYLOAD_MAX + 8];
+	if (payload_size > REQ_CONF_PAYLOAD_MAX)
+	{
+		return false;
+	}
+
+	packet[0] = START_FLAG;
+	packet[1] = REQ_CONF;
+	packet[2] = payload_size + 1;
+	packet[3] = (type >> 24) & 0xFF;
+	packet[4] = (type >> 16) & 0xFF;
+	packet[5] = (type >> 8) & 0xFF;
+	packet[6] = type & 0xFF;
+	memcpy(&packet[7], payload, payload_size);
+	packet[payload_size + 7] = _ComputeChecksum(packet, payload_size + 7);
+	return (HAL_UART_Transmit_IT(rpl_huart, packet, payload_size + 8) == HAL_OK);
 }
 
 __attribute__((weak)) void RPLIDAR_OnDeviceInfo(rplidar_info_t *info)
@@ -127,6 +159,11 @@ __attribute__((weak)) void RPLIDAR_OnConfiguration(uint32_t type, uint8_t *paylo
 }
 
 __attribute__((weak)) void RPLIDAR_OnSingleMeasurement(rplidar_measurement_t *measurement)
+{
+	return;
+}
+
+__attribute__((weak)) void RPLIDAR_OnDenseMeasurements(rplidar_dense_measurements_t *measurement)
 {
 	return;
 }
@@ -249,6 +286,15 @@ static bool _ParseResponse(uint8_t *response, uint16_t size)
 			RPLIDAR_OnSingleMeasurement(measurement);
 			return true;
 		}
+		break;
+	case RESPONSE_SCAN_EXPRESS:
+		if (size == sizeof(rplidar_dense_measurements_t))
+		{
+			rplidar_dense_measurements_t *measurement = (rplidar_dense_measurements_t *)response;
+			RPLIDAR_OnDenseMeasurements(measurement);
+			return true;
+		}
+		break;
 	}
 
 	return false;
@@ -268,6 +314,8 @@ static response_type_t _ParseRspType(uint8_t type)
 		return RESPONSE_CONF;
 	case RESP_SCAN:
 		return RESPONSE_SCAN;
+	case RESP_SCAN_EXPR:
+		return RESPONSE_SCAN_EXPRESS;
 	default:
 		return RESPONSE_UNKNOWN;
 	}
@@ -304,8 +352,18 @@ static parser_state_t _ParseDescriptor(uint8_t *buf)
 	}
 }
 
-static void _SendRequest(uint8_t cmd)
+static bool _SendRequest(uint8_t cmd)
 {
 	uint8_t packet[2] = {START_FLAG, cmd};
-	HAL_UART_Transmit_IT(rpl_huart, packet, sizeof(packet));
+	return (HAL_UART_Transmit_IT(rpl_huart, packet, sizeof(packet)) == HAL_OK);
+}
+
+static uint8_t _ComputeChecksum(uint8_t *data, uint16_t size)
+{
+	uint8_t checksum = 0;
+	for (uint16_t i = 0; i < size; i++)
+	{
+		checksum += data[i];
+	}
+	return checksum;
 }

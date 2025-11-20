@@ -2,12 +2,13 @@
  * rplidar.h
  *
  *  Created on: Nov 17, 2025
- *      Author: nicob
+ *      Author: Nicolas BESNARD
  */
 
 #ifndef INC_RPLIDAR_H_
 #define INC_RPLIDAR_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "stm32f4xx_hal.h"
 
@@ -42,12 +43,25 @@ typedef struct __attribute__((packed))
     uint16_t distance;
 } rplidar_measurement_t;
 
-HAL_StatusTypeDef RPLIDAR_Init(UART_HandleTypeDef *huart);
-void RPLIDAR_StartScan(void);
-void RPLIDAR_Stop(void);
-void RPLIDAR_RequestHealth(void);
-void RPLIDAR_RequestDeviceInfo(void);
+typedef struct __attribute__((packed))
+{
+    uint8_t checksum1 : 4;
+    uint8_t sync1 : 4;
+    uint8_t checksum2 : 4;
+    uint8_t sync2 : 4;
+    uint16_t angle : 15;
+    uint16_t start : 1;
+    uint16_t distance[40];
+} rplidar_dense_measurements_t;
+
+bool RPLIDAR_Init(UART_HandleTypeDef *huart);
+bool RPLIDAR_StartScan(void);
+bool RPLIDAR_StartScanExpress(void);
+bool RPLIDAR_Stop(void);
+bool RPLIDAR_RequestHealth(void);
+bool RPLIDAR_RequestDeviceInfo(void);
 void RPLIDAR_OnSingleMeasurement(rplidar_measurement_t *measurement);
+void RPLIDAR_OnDenseMeasurements(rplidar_dense_measurements_t *measurement);
 void RPLIDAR_OnDeviceInfo(rplidar_info_t *info);
 void RPLIDAR_OnHealth(rplidar_health_t *health);
 void RPLIDAR_OnSampleRate(rplidar_samplerate_t *samplerate);
