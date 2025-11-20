@@ -34,11 +34,11 @@ int main()
     printf("START TESTS\n");
     RPLIDAR_Init(&huart1);
 
-    // test_device_info_request();
-    // test_health_request();
-    // test_samplerate_request();
-    // test_configuration_request();
-    // test_scan_request();
+    test_device_info_request();
+    test_health_request();
+    test_samplerate_request();
+    test_configuration_request();
+    test_scan_request();
     test_scan_express_request();
 }
 
@@ -46,6 +46,8 @@ static void test_device_info_request(void)
 {
     printf("test_device_info_request : ");
     cb_type = None;
+
+    RPLIDAR_RequestDeviceInfo();
 
     // Send info descriptor
     buf[head++] = 0xA5;
@@ -86,6 +88,8 @@ static void test_health_request(void)
     printf("test_health_request : ");
     cb_type = None;
 
+    RPLIDAR_RequestHealth();
+
     // Send info descriptor
     buf[head++] = 0xA5;
     buf[head++] = 0x5A;
@@ -115,6 +119,8 @@ static void test_samplerate_request(void)
 {
     printf("test_samplerate_request : ");
     cb_type = None;
+
+    RPLIDAR_RequestSampleRate();
 
     // Send info descriptor
     buf[head++] = 0xA5;
@@ -182,6 +188,8 @@ static void test_scan_request(void)
     printf("test_scan_request : ");
     cb_type = None;
 
+    RPLIDAR_StartScan();
+
     // Send info descriptor
     buf[head++] = 0xA5;
     buf[head++] = 0x5A;
@@ -218,6 +226,8 @@ static void test_scan_express_request(void)
 {
     printf("test_scan_express_request : ");
     cb_type = None;
+
+    RPLIDAR_StartScanExpress();
 
     // Send info descriptor
     buf[head++] = 0xA5;

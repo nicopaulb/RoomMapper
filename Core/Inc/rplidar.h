@@ -60,6 +60,7 @@ bool RPLIDAR_StartScanExpress(void);
 bool RPLIDAR_Stop(void);
 bool RPLIDAR_RequestHealth(void);
 bool RPLIDAR_RequestDeviceInfo(void);
+bool RPLIDAR_RequestSampleRate(void);
 void RPLIDAR_OnSingleMeasurement(rplidar_measurement_t *measurement);
 void RPLIDAR_OnDenseMeasurements(rplidar_dense_measurements_t *measurement);
 void RPLIDAR_OnDeviceInfo(rplidar_info_t *info);
