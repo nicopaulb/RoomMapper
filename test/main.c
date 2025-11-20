@@ -32,6 +32,8 @@ int main()
     printf("START TESTS\n");
     RPLIDAR_Init(&huart1);
 
+    RPLIDAR_StartScanExpress();
+
     test_device_info_request();
     test_health_request();
     test_samplerate_request();
