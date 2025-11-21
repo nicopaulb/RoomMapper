@@ -305,6 +305,9 @@ static bool _ParseResponse(uint8_t *response, uint16_t size)
 			return true;
 		}
 		break;
+
+	default:
+		break;
 	}
 
 	return false;
