@@ -31,7 +31,11 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "fonts.h"
+#include <ILI9488.h>
+#include "z_displ_ILI9XXX_test.h"
+#include <XPT2046.h>
+#include "z_touch_XPT2046_test.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -59,6 +63,23 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define LED_BLUE_Pin GPIO_PIN_13
 #define LED_BLUE_GPIO_Port GPIOC
+#define TOUCH_INT_Pin GPIO_PIN_3
+#define TOUCH_INT_GPIO_Port GPIOA
+#define TOUCH_INT_EXTI_IRQn EXTI3_IRQn
+#define DISPL_SCK_Pin GPIO_PIN_5
+#define DISPL_SCK_GPIO_Port GPIOA
+#define DISPL_MOSI_Pin GPIO_PIN_7
+#define DISPL_MOSI_GPIO_Port GPIOA
+#define DISPL_RST_Pin GPIO_PIN_2
+#define DISPL_RST_GPIO_Port GPIOB
+#define DISPL_DC_Pin GPIO_PIN_10
+#define DISPL_DC_GPIO_Port GPIOB
+#define TOUCH_SCK_Pin GPIO_PIN_13
+#define TOUCH_SCK_GPIO_Port GPIOB
+#define TOUCH_MISO_Pin GPIO_PIN_14
+#define TOUCH_MISO_GPIO_Port GPIOB
+#define TOUCH_MOSI_Pin GPIO_PIN_15
+#define TOUCH_MOSI_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

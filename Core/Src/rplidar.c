@@ -57,9 +57,9 @@ typedef enum response_type
 	RESPONSE_SCAN_EXPRESS
 } response_type_t;
 
-static UART_HandleTypeDef *rpl_huart;
+static UART_HandleTypeDef *rpl_uart;
 
-static uint8_t rpl_rx_buf[BUFFER_RX_SIZE];
+static uint8_t rpl_rx_buf[BUFFER_RX_SIZE] __attribute__ ((aligned(4)));
 static uint8_t rpl_resp_len = 0;
 static response_type_t rpl_resp_type = RESPONSE_UNKNOWN;
 static parser_state_t rpl_parser_state = PARSER_DESCRIPTOR;
@@ -68,7 +68,7 @@ static void _ParseRX(uint8_t *data, uint16_t len);
 static parser_state_t _ParseDescriptor(uint8_t *buf);
 static response_type_t _ParseRspType(uint8_t type);
 static bool _ParseResponse(uint8_t *response, uint16_t size);
-static bool _SendRequest(uint8_t cmd);
+static bool _SendRequest(uint8_t* data, uint16_t size);
 static uint8_t _ComputeChecksum(uint8_t *data, uint16_t size);
 static void _ResetParser(void);
 
@@ -79,52 +79,50 @@ bool RPLIDAR_Init(UART_HandleTypeDef *huart)
 		return false;
 	}
 
-	rpl_huart = huart;
-
+	rpl_uart = huart;
 	_ResetParser();
 
-	if (HAL_UARTEx_ReceiveToIdle_DMA(rpl_huart, rpl_rx_buf, BUFFER_RX_SIZE) != HAL_OK)
-	{
-		return false;
-	}
-
 	// Disable half transfer IT
-	__HAL_DMA_DISABLE_IT(rpl_huart->hdmarx, DMA_IT_HT);
+	//__HAL_DMA_DISABLE_IT(rpl_uart->hdmarx, DMA_IT_HT);
 
-	return true;
+	return (HAL_UARTEx_ReceiveToIdle_DMA(rpl_uart, rpl_rx_buf, BUFFER_RX_SIZE) == HAL_OK);
 }
 
 bool RPLIDAR_StartScan(void)
 {
-	return _SendRequest(REQ_SCAN);
+	uint8_t packet[2] = {START_FLAG, REQ_SCAN};
+	return _SendRequest(packet, sizeof(packet));
 }
 
 bool RPLIDAR_StartScanExpress(void)
 {
 	uint8_t packet[9] = {START_FLAG, REQ_SCAN_EXPR, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22};
 	packet[8] = _ComputeChecksum(packet, 8);
-	_ResetParser();
-	return (HAL_UART_Transmit_IT(rpl_huart, packet, sizeof(packet)) == HAL_OK);
+	return _SendRequest(packet, sizeof(packet));
 }
 
-bool RPLIDAR_Stop(void)
+bool RPLIDAR_StopScan(void)
 {
-	return _SendRequest(REQ_STOP);
+	uint8_t packet[2] = {START_FLAG, REQ_STOP};
+	return _SendRequest(packet, sizeof(packet));
 }
 
 bool RPLIDAR_RequestDeviceInfo(void)
 {
-	return _SendRequest(REQ_INFO);
+	uint8_t packet[2] = {START_FLAG, REQ_INFO};
+	return _SendRequest(packet, sizeof(packet));
 }
 
 bool RPLIDAR_RequestHealth(void)
 {
-	return _SendRequest(REQ_HEALTH);
+	uint8_t packet[2] = {START_FLAG, REQ_HEALTH};
+	return _SendRequest(packet, sizeof(packet));
 }
 
 bool RPLIDAR_RequestSampleRate(void)
 {
-	return _SendRequest(REQ_SAMPLERATE);
+	uint8_t packet[2] = {START_FLAG, REQ_SAMPLERATE};
+	return _SendRequest(packet, sizeof(packet));
 }
 
 bool RPLIDAR_RequestConfiguration(uint32_t type, uint8_t *payload, uint16_t payload_size)
@@ -144,8 +142,7 @@ bool RPLIDAR_RequestConfiguration(uint32_t type, uint8_t *payload, uint16_t payl
 	packet[6] = type & 0xFF;
 	memcpy(&packet[7], payload, payload_size);
 	packet[payload_size + 7] = _ComputeChecksum(packet, payload_size + 7);
-	_ResetParser();
-	return (HAL_UART_Transmit_IT(rpl_huart, packet, payload_size + 8) == HAL_OK);
+	return _SendRequest(packet, sizeof(packet));
 }
 
 __attribute__((weak)) void RPLIDAR_OnDeviceInfo(rplidar_info_t *info)
@@ -181,7 +178,7 @@ __attribute__((weak)) void RPLIDAR_OnDenseMeasurements(rplidar_dense_measurement
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t head)
 {
 	static uint16_t rpl_rx_tail = 0;
-	if (huart->Instance == rpl_huart->Instance)
+	if (huart->Instance == rpl_uart->Instance)
 	{
 		if (head > rpl_rx_tail)
 		{
@@ -365,11 +362,16 @@ static parser_state_t _ParseDescriptor(uint8_t *buf)
 	}
 }
 
-static bool _SendRequest(uint8_t cmd)
+
+static bool _SendRequest(uint8_t* data, uint16_t size)
 {
-	uint8_t packet[2] = {START_FLAG, cmd};
+	if(HAL_UART_AbortTransmit(rpl_uart) != HAL_OK) {
+		return false;
+	}
+
 	_ResetParser();
-	return (HAL_UART_Transmit_IT(rpl_huart, packet, sizeof(packet)) == HAL_OK);
+
+	return (HAL_UART_Transmit_DMA(rpl_uart, data, size) == HAL_OK);
 }
 
 static uint8_t _ComputeChecksum(uint8_t *data, uint16_t size)

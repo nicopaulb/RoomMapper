@@ -57,7 +57,7 @@ typedef struct __attribute__((packed))
 bool RPLIDAR_Init(UART_HandleTypeDef *huart);
 bool RPLIDAR_StartScan(void);
 bool RPLIDAR_StartScanExpress(void);
-bool RPLIDAR_Stop(void);
+bool RPLIDAR_StopScan(void);
 bool RPLIDAR_RequestHealth(void);
 bool RPLIDAR_RequestDeviceInfo(void);
 bool RPLIDAR_RequestSampleRate(void);
