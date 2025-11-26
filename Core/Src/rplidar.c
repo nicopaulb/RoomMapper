@@ -107,6 +107,12 @@ bool RPLIDAR_StopScan(void)
 	return _SendRequest(packet, sizeof(packet));
 }
 
+bool RPLIDAR_Reset(void)
+{
+	uint8_t packet[2] = {START_FLAG, REQ_RESET};
+	return _SendRequest(packet, sizeof(packet));
+}
+
 bool RPLIDAR_RequestDeviceInfo(void)
 {
 	uint8_t packet[2] = {START_FLAG, REQ_INFO};
