@@ -59,18 +59,22 @@ typedef enum response_type
 
 static UART_HandleTypeDef *rpl_uart;
 
-static uint8_t rpl_rx_buf[BUFFER_RX_SIZE] __attribute__ ((aligned(4)));
+static uint8_t rpl_rx_buf[BUFFER_RX_SIZE] __attribute__((aligned(4)));
+static uint8_t rpl_resp_buf[BUFFER_RESP_SIZE];
 static uint8_t rpl_resp_len = 0;
 static response_type_t rpl_resp_type = RESPONSE_UNKNOWN;
 static parser_state_t rpl_parser_state = PARSER_DESCRIPTOR;
+static parser_state_t rpl_last_complete_resp = RESPONSE_UNKNOWN;
+static uint8_t *rpl_usr_buf = NULL;
 
 static void _ParseRX(uint8_t *data, uint16_t len);
 static parser_state_t _ParseDescriptor(uint8_t *buf);
 static response_type_t _ParseRspType(uint8_t type);
 static bool _ParseResponse(uint8_t *response, uint16_t size);
-static bool _SendRequest(uint8_t* data, uint16_t size);
+static bool _SendRequest(uint8_t *data, uint16_t size);
 static uint8_t _ComputeChecksum(uint8_t *data, uint16_t size);
 static void _ResetParser(void);
+static bool _WaitForResponse(response_type_t type, uint32_t timeout);
 
 bool RPLIDAR_Init(UART_HandleTypeDef *huart)
 {
@@ -113,25 +117,58 @@ bool RPLIDAR_Reset(void)
 	return _SendRequest(packet, sizeof(packet));
 }
 
-bool RPLIDAR_RequestDeviceInfo(void)
+bool RPLIDAR_RequestDeviceInfo(rplidar_info_t *info, uint32_t timeout)
 {
 	uint8_t packet[2] = {START_FLAG, REQ_INFO};
-	return _SendRequest(packet, sizeof(packet));
+
+	// Use buffer provided by user to store response
+	// If null then use internal buffer and callback
+	rpl_usr_buf = (uint8_t *)info;
+
+	if (!_SendRequest(packet, sizeof(packet)))
+	{
+		return false;
+	}
+
+	// If user didn't provide a buffer, return immediatly and the callback will be called
+	return rpl_usr_buf != NULL ? _WaitForResponse(RESPONSE_INFO, timeout) : true;
 }
 
-bool RPLIDAR_RequestHealth(void)
+bool RPLIDAR_RequestHealth(rplidar_health_t *health, uint32_t timeout)
 {
 	uint8_t packet[2] = {START_FLAG, REQ_HEALTH};
-	return _SendRequest(packet, sizeof(packet));
+
+	// Use buffer provided by user to store response
+	// If null then use internal buffer and callback
+	rpl_usr_buf = (uint8_t *)health;
+
+	if (!_SendRequest(packet, sizeof(packet)))
+	{
+		return false;
+	}
+
+	// If user didn't provide a buffer, return immediatly and the callback will be called
+	return rpl_usr_buf != NULL ? _WaitForResponse(RESPONSE_HEALTH, timeout) : true;
 }
 
-bool RPLIDAR_RequestSampleRate(void)
+bool RPLIDAR_RequestSampleRate(rplidar_samplerate_t *samplerate, uint32_t timeout)
 {
 	uint8_t packet[2] = {START_FLAG, REQ_SAMPLERATE};
-	return _SendRequest(packet, sizeof(packet));
+
+	// Use buffer provided by user to store response
+	// If null then use internal buffer and callback
+	rpl_usr_buf = (uint8_t *)samplerate;
+
+	if (!_SendRequest(packet, sizeof(packet)))
+	{
+		return false;
+	}
+
+	// If user didn't provide a buffer, return immediatly and the callback will be called
+	return rpl_usr_buf != NULL ? _WaitForResponse(RESPONSE_SAMPLERATE, timeout) : true;
 }
 
-bool RPLIDAR_RequestConfiguration(uint32_t type, uint8_t *payload, uint16_t payload_size)
+bool RPLIDAR_RequestConfiguration(uint32_t type, uint8_t *payload, uint16_t payload_size, rplidar_configuration_t *config, uint32_t timeout)
 {
 	uint8_t packet[REQ_CONF_PAYLOAD_MAX + 8];
 	if (payload_size > REQ_CONF_PAYLOAD_MAX)
@@ -148,7 +185,18 @@ bool RPLIDAR_RequestConfiguration(uint32_t type, uint8_t *payload, uint16_t payl
 	packet[6] = type & 0xFF;
 	memcpy(&packet[7], payload, payload_size);
 	packet[payload_size + 7] = _ComputeChecksum(packet, payload_size + 7);
-	return _SendRequest(packet, sizeof(packet));
+
+	// Use buffer provided by user to store response
+	// If null then use internal buffer and callback
+	rpl_usr_buf = (uint8_t *)config;
+
+	if (!_SendRequest(packet, sizeof(packet)))
+	{
+		return false;
+	}
+
+	// If user didn't provide a buffer, return immediatly and the callback will be called
+	return rpl_usr_buf != NULL ? _WaitForResponse(RESPONSE_CONF, timeout) : true;
 }
 
 __attribute__((weak)) void RPLIDAR_OnDeviceInfo(rplidar_info_t *info)
@@ -166,7 +214,7 @@ __attribute__((weak)) void RPLIDAR_OnSampleRate(rplidar_samplerate_t *samplerate
 	return;
 }
 
-__attribute__((weak)) void RPLIDAR_OnConfiguration(uint32_t type, uint8_t *payload, uint16_t payload_size)
+__attribute__((weak)) void RPLIDAR_OnConfiguration(rplidar_configuration_t *config)
 {
 	return;
 }
@@ -222,7 +270,6 @@ static void _ParseRX(uint8_t *data, uint16_t len)
 		case PARSER_RESPONSE_SINGLE:
 		case PARSER_RESPONSE_MULTI:
 		{
-			static uint8_t rpl_resp_buf[BUFFER_RESP_SIZE];
 			static uint16_t rpl_resp_idx = 0;
 			rpl_resp_buf[rpl_resp_idx++] = data[i];
 			if (rpl_resp_idx == rpl_resp_len)
@@ -266,7 +313,17 @@ static bool _ParseResponse(uint8_t *response, uint16_t size)
 		if (size == sizeof(rplidar_info_t))
 		{
 			rplidar_info_t *info = (rplidar_info_t *)response;
-			RPLIDAR_OnDeviceInfo(info);
+			if (rpl_usr_buf != NULL)
+			{
+				// Use user buffer
+				memcpy(rpl_usr_buf, info, sizeof(rplidar_info_t));
+				rpl_last_complete_resp = RESPONSE_INFO;
+			}
+			else
+			{
+				// Use callback
+				RPLIDAR_OnDeviceInfo(info);
+			}
 			return true;
 		}
 		break;
@@ -274,7 +331,17 @@ static bool _ParseResponse(uint8_t *response, uint16_t size)
 		if (size == sizeof(rplidar_health_t))
 		{
 			rplidar_health_t *health = (rplidar_health_t *)response;
-			RPLIDAR_OnHealth(health);
+			if (rpl_usr_buf != NULL)
+			{
+				// Use user buffer
+				memcpy(rpl_usr_buf, health, sizeof(rplidar_health_t));
+				rpl_last_complete_resp = RESPONSE_HEALTH;
+			}
+			else
+			{
+				// Use callback
+				RPLIDAR_OnHealth(health);
+			}
 			return true;
 		}
 		break;
@@ -282,14 +349,40 @@ static bool _ParseResponse(uint8_t *response, uint16_t size)
 		if (size == sizeof(rplidar_samplerate_t))
 		{
 			rplidar_samplerate_t *samplerate = (rplidar_samplerate_t *)response;
-			RPLIDAR_OnSampleRate(samplerate);
+			if (rpl_usr_buf != NULL)
+			{
+				// Use user buffer
+				memcpy(rpl_usr_buf, samplerate, sizeof(rplidar_samplerate_t));
+				rpl_last_complete_resp = RESPONSE_SAMPLERATE;
+			}
+			else
+			{
+				// Use callback
+				RPLIDAR_OnSampleRate(samplerate);
+			}
 			return true;
 		}
 		break;
 	case RESPONSE_CONF:
 	{
-		uint32_t type = response[3] << 24 | response[2] << 16 | response[1] << 8 | response[0];
-		RPLIDAR_OnConfiguration(type, response + 4, size - 4);
+		rplidar_configuration_t config = {
+			.type = response[3] << 24 | response[2] << 16 | response[1] << 8 | response[0],
+			.payload_size = size - 4,
+			.payload = response + 4,
+		};
+		if (rpl_usr_buf != NULL)
+		{
+			// Use user buffer
+			memcpy(rpl_usr_buf, &config, sizeof(rplidar_configuration_t));
+			// Copy payload to end of user buffer
+			memcpy(((rplidar_configuration_t *)rpl_usr_buf)->payload, response + 4, size - 4);
+			rpl_last_complete_resp = RESPONSE_SAMPLERATE;
+		}
+		else
+		{
+			// Use callback
+			RPLIDAR_OnConfiguration(&config);
+		}
 		return true;
 	}
 	case RESPONSE_SCAN:
@@ -368,10 +461,10 @@ static parser_state_t _ParseDescriptor(uint8_t *buf)
 	}
 }
 
-
-static bool _SendRequest(uint8_t* data, uint16_t size)
+static bool _SendRequest(uint8_t *data, uint16_t size)
 {
-	if(HAL_UART_AbortTransmit(rpl_uart) != HAL_OK) {
+	if (HAL_UART_AbortTransmit(rpl_uart) != HAL_OK)
+	{
 		return false;
 	}
 
@@ -395,4 +488,19 @@ static void _ResetParser(void)
 	rpl_parser_state = PARSER_DESCRIPTOR;
 	rpl_resp_len = 0;
 	rpl_resp_type = RESPONSE_UNKNOWN;
+	rpl_last_complete_resp = RESPONSE_UNKNOWN;
+}
+
+static bool _WaitForResponse(response_type_t type, uint32_t timeout)
+{
+	uint32_t start = HAL_GetTick();
+	while (rpl_resp_type != type)
+	{
+		if ((timeout != 0) && ((HAL_GetTick() - start) > timeout))
+		{
+			return false;
+		}
+	}
+
+	return true;
 }

@@ -36,6 +36,13 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
+    uint32_t type;
+    uint8_t payload_size;
+    uint8_t *payload;
+} rplidar_configuration_t;
+
+typedef struct __attribute__((packed))
+{
     uint8_t start : 2;
     uint8_t quality : 6;
     uint16_t check : 1;
@@ -59,14 +66,14 @@ bool RPLIDAR_StartScan(void);
 bool RPLIDAR_StartScanExpress(void);
 bool RPLIDAR_StopScan(void);
 bool RPLIDAR_Reset(void);
-bool RPLIDAR_RequestHealth(void);
-bool RPLIDAR_RequestDeviceInfo(void);
-bool RPLIDAR_RequestSampleRate(void);
+bool RPLIDAR_RequestHealth(rplidar_health_t *health, uint32_t timeout);
+bool RPLIDAR_RequestDeviceInfo(rplidar_info_t *info, uint32_t timeout);
+bool RPLIDAR_RequestSampleRate(rplidar_samplerate_t *samplerate, uint32_t timeout);
 void RPLIDAR_OnSingleMeasurement(rplidar_measurement_t *measurement);
 void RPLIDAR_OnDenseMeasurements(rplidar_dense_measurements_t *measurement);
 void RPLIDAR_OnDeviceInfo(rplidar_info_t *info);
 void RPLIDAR_OnHealth(rplidar_health_t *health);
 void RPLIDAR_OnSampleRate(rplidar_samplerate_t *samplerate);
-void RPLIDAR_OnConfiguration(uint32_t type, uint8_t *payload, uint16_t payload_size);
+void RPLIDAR_OnConfiguration(rplidar_configuration_t *config);
 
 #endif /* INC_RPLIDAR_H_ */
