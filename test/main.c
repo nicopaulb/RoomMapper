@@ -47,7 +47,7 @@ static void test_device_info_request(void)
     printf("test_device_info_request : ");
     cb_type = None;
 
-    RPLIDAR_RequestDeviceInfo();
+    RPLIDAR_RequestDeviceInfo(NULL, 0);
 
     // Send info descriptor
     buf[head++] = 0xA5;
@@ -88,7 +88,7 @@ static void test_health_request(void)
     printf("test_health_request : ");
     cb_type = None;
 
-    RPLIDAR_RequestHealth();
+    RPLIDAR_RequestHealth(NULL, 0);
 
     // Send info descriptor
     buf[head++] = 0xA5;
@@ -120,7 +120,7 @@ static void test_samplerate_request(void)
     printf("test_samplerate_request : ");
     cb_type = None;
 
-    RPLIDAR_RequestSampleRate();
+    RPLIDAR_RequestSampleRate(NULL, 0);
 
     // Send info descriptor
     buf[head++] = 0xA5;
@@ -174,12 +174,12 @@ static void test_configuration_request(void)
     printf("SUCCESS\n");
 }
 
-void RPLIDAR_OnConfiguration(uint32_t type, uint8_t *payload, uint16_t payload_size)
+void RPLIDAR_OnConfiguration(rplidar_configuration_t *config)
 {
-    assert(type == TYPE);
-    assert(payload_size == 2);
-    assert(payload[0] == (PAYLOAD & 0xFF00) >> 8);
-    assert(payload[1] == PAYLOAD & 0xFF);
+    assert(config->type == TYPE);
+    assert(config->payload_size == 2);
+    assert(config->payload[0] == (PAYLOAD & 0xFF00) >> 8);
+    assert(config->payload[1] == PAYLOAD & 0xFF);
     cb_type = cb_RPLIDAR_OnConfiguration;
 }
 

@@ -20,8 +20,10 @@ typedef struct
 } UART_HandleTypeDef;
 
 HAL_StatusTypeDef HAL_UARTEx_ReceiveToIdle_DMA(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size);
-HAL_StatusTypeDef HAL_UART_Transmit_IT(UART_HandleTypeDef *huart, const uint8_t *pData, uint16_t Size);
+HAL_StatusTypeDef HAL_UART_Transmit_DMA(UART_HandleTypeDef *huart, const uint8_t *pData, uint16_t Size);
+HAL_StatusTypeDef HAL_UART_AbortTransmit(UART_HandleTypeDef *huart);
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t head);
+uint32_t HAL_GetTick(void);
 
 extern uint8_t *buf;
 

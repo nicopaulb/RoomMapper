@@ -9,7 +9,17 @@ HAL_StatusTypeDef HAL_UARTEx_ReceiveToIdle_DMA(UART_HandleTypeDef *huart, uint8_
     return HAL_OK;
 }
 
-HAL_StatusTypeDef HAL_UART_Transmit_IT(UART_HandleTypeDef *huart, const uint8_t *pData, uint16_t Size)
+HAL_StatusTypeDef HAL_UART_Transmit_DMA(UART_HandleTypeDef *huart, const uint8_t *pData, uint16_t Size)
 {
     return HAL_OK;
+}
+
+HAL_StatusTypeDef HAL_UART_AbortTransmit(UART_HandleTypeDef *huart)
+{
+    return HAL_OK;
+}
+
+uint32_t HAL_GetTick(void)
+{
+    return 1234;
 }
