@@ -66,6 +66,8 @@ static response_type_t rpl_resp_type = RESPONSE_UNKNOWN;
 static parser_state_t rpl_parser_state = PARSER_DESCRIPTOR;
 static parser_state_t rpl_last_complete_resp = RESPONSE_UNKNOWN;
 static uint8_t *rpl_usr_buf = NULL;
+static uint32_t rpl_usr_buf_idx = 0;
+static uint32_t rpl_multiresp_remaining = 0;
 
 static void _ParseRX(uint8_t *data, uint16_t len);
 static parser_state_t _ParseDescriptor(uint8_t *buf);
@@ -75,6 +77,7 @@ static bool _SendRequest(uint8_t *data, uint16_t size);
 static uint8_t _ComputeChecksum(uint8_t *data, uint16_t size);
 static void _ResetParser(void);
 static bool _WaitForResponse(response_type_t type, uint32_t timeout);
+static bool _WaitForMultiResponse(response_type_t type, uint32_t timeout);
 
 bool RPLIDAR_Init(UART_HandleTypeDef *huart)
 {
@@ -92,17 +95,41 @@ bool RPLIDAR_Init(UART_HandleTypeDef *huart)
 	return (HAL_UARTEx_ReceiveToIdle_DMA(rpl_uart, rpl_rx_buf, BUFFER_RX_SIZE) == HAL_OK);
 }
 
-bool RPLIDAR_StartScan(void)
+bool RPLIDAR_StartScan(rplidar_measurement_t *measurement, uint32_t count, uint32_t timeout)
 {
 	uint8_t packet[2] = {START_FLAG, REQ_SCAN};
-	return _SendRequest(packet, sizeof(packet));
+
+	// Use buffer provided by user to store response
+	// If null then use internal buffer and callback
+	rpl_usr_buf = (uint8_t *)measurement;
+	rpl_multiresp_remaining = count;
+
+	if (!_SendRequest(packet, sizeof(packet)))
+	{
+		return false;
+	}
+
+	// If user didn't provide a buffer, return immediatly and the callback will be called
+	return rpl_usr_buf != NULL ? _WaitForMultiResponse(RESPONSE_SCAN, timeout) : true;
 }
 
-bool RPLIDAR_StartScanExpress(void)
+bool RPLIDAR_StartScanExpress(rplidar_dense_measurements_t *measurements, uint32_t count, uint32_t timeout)
 {
 	uint8_t packet[9] = {START_FLAG, REQ_SCAN_EXPR, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22};
 	packet[8] = _ComputeChecksum(packet, 8);
-	return _SendRequest(packet, sizeof(packet));
+
+	// Use buffer provided by user to store response
+	// If null then use internal buffer and callback
+	rpl_usr_buf = (uint8_t *)measurements;
+	rpl_multiresp_remaining = count;
+
+	if (!_SendRequest(packet, sizeof(packet)))
+	{
+		return false;
+	}
+
+	// If user didn't provide a buffer, return immediatly and the callback will be called
+	return rpl_usr_buf != NULL ? _WaitForMultiResponse(RESPONSE_SCAN_EXPRESS, timeout) : true;
 }
 
 bool RPLIDAR_StopScan(void)
@@ -389,15 +416,46 @@ static bool _ParseResponse(uint8_t *response, uint16_t size)
 		if (size == sizeof(rplidar_measurement_t))
 		{
 			rplidar_measurement_t *measurement = (rplidar_measurement_t *)response;
-			RPLIDAR_OnSingleMeasurement(measurement);
+			if (rpl_usr_buf != NULL)
+			{
+				// Use user buffer
+				static uint32_t rpl_usr_buf_idx = 0;
+				if (rpl_multiresp_remaining > 0)
+				{
+					// Do not copy more than the needed number of measurements to prevent overflowing the user buffer
+					memcpy(rpl_usr_buf + (sizeof(rplidar_measurement_t) * rpl_usr_buf_idx++), measurement, sizeof(rplidar_measurement_t));
+					rpl_multiresp_remaining--;
+					rpl_last_complete_resp = RESPONSE_SCAN;
+				}
+			}
+			else
+			{
+				// Use callback
+				RPLIDAR_OnSingleMeasurement(measurement);
+			}
 			return true;
 		}
 		break;
 	case RESPONSE_SCAN_EXPRESS:
 		if (size == sizeof(rplidar_dense_measurements_t))
 		{
-			rplidar_dense_measurements_t *measurement = (rplidar_dense_measurements_t *)response;
-			RPLIDAR_OnDenseMeasurements(measurement);
+			rplidar_dense_measurements_t *measurements = (rplidar_dense_measurements_t *)response;
+			if (rpl_usr_buf != NULL)
+			{
+				// Use user buffer
+				if (rpl_multiresp_remaining > 0)
+				{
+					// Do not copy more than the needed number of measurements to prevent overflowing the user buffer
+					memcpy(rpl_usr_buf + (sizeof(rplidar_dense_measurements_t) * rpl_usr_buf_idx++), measurements, sizeof(rplidar_dense_measurements_t));
+					rpl_multiresp_remaining--;
+					rpl_last_complete_resp = RESPONSE_SCAN_EXPRESS;
+				}
+			}
+			else
+			{
+				// Use callback
+				RPLIDAR_OnDenseMeasurements(measurements);
+			}
 			return true;
 		}
 		break;
@@ -489,12 +547,27 @@ static void _ResetParser(void)
 	rpl_resp_len = 0;
 	rpl_resp_type = RESPONSE_UNKNOWN;
 	rpl_last_complete_resp = RESPONSE_UNKNOWN;
+	rpl_usr_buf_idx = 0;
 }
 
 static bool _WaitForResponse(response_type_t type, uint32_t timeout)
 {
 	uint32_t start = HAL_GetTick();
 	while (rpl_resp_type != type)
+	{
+		if ((timeout != 0) && ((HAL_GetTick() - start) > timeout))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static bool _WaitForMultiResponse(response_type_t type, uint32_t timeout)
+{
+	uint32_t start = HAL_GetTick();
+	while (rpl_resp_type != type || rpl_multiresp_remaining > 0)
 	{
 		if ((timeout != 0) && ((HAL_GetTick() - start) > timeout))
 		{

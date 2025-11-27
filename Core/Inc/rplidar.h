@@ -62,8 +62,8 @@ typedef struct __attribute__((packed))
 } rplidar_dense_measurements_t;
 
 bool RPLIDAR_Init(UART_HandleTypeDef *huart);
-bool RPLIDAR_StartScan(void);
-bool RPLIDAR_StartScanExpress(void);
+bool RPLIDAR_StartScan(rplidar_measurement_t *measurement, uint32_t count, uint32_t timeout);
+bool RPLIDAR_StartScanExpress(rplidar_dense_measurements_t *measurements, uint32_t count, uint32_t timeout);
 bool RPLIDAR_StopScan(void);
 bool RPLIDAR_Reset(void);
 bool RPLIDAR_RequestHealth(rplidar_health_t *health, uint32_t timeout);

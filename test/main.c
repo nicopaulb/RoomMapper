@@ -188,7 +188,7 @@ static void test_scan_request(void)
     printf("test_scan_request : ");
     cb_type = None;
 
-    RPLIDAR_StartScan();
+    RPLIDAR_StartScan(NULL, 0, 0);
 
     // Send info descriptor
     buf[head++] = 0xA5;
@@ -227,7 +227,7 @@ static void test_scan_express_request(void)
     printf("test_scan_express_request : ");
     cb_type = None;
 
-    RPLIDAR_StartScanExpress();
+    RPLIDAR_StartScanExpress(NULL, 0, 0);
 
     // Send info descriptor
     buf[head++] = 0xA5;
