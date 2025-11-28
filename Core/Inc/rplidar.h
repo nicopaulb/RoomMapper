@@ -14,8 +14,8 @@
 
 typedef struct __attribute__((packed))
 {
-    uint8_t model_major : 4;
     uint8_t model_sub : 4;
+    uint8_t model_major : 4;
     uint8_t fw_minor;
     uint8_t fw_major;
     uint8_t hardware;
@@ -83,7 +83,7 @@ bool RPLIDAR_Init(UART_HandleTypeDef *huart);
  * If a NULL pointer is provided, the function will return immediately and the `RPLIDAR_OnSingleMeasurement`
  * callback will be called for each new measurement.
  */
-bool RPLIDAR_StartScan(rplidar_measurement_t *measurement, uint32_t count, uint32_t timeout);
+bool RPLIDAR_StartScan(rplidar_measurement_t measurement[], uint32_t count, uint32_t timeout);
 
 /**
  * @brief Start express scanning in blocking or non-blocking mode.
@@ -115,6 +115,15 @@ bool RPLIDAR_StopScan(void);
  * This function resets the RPLIDAR device.
  */
 bool RPLIDAR_Reset(void);
+
+/**
+ * @brief Set the motor speed.
+ * @param rpm Real-time motor speed.
+ * @return True if the command is successful, false otherwise.
+ *
+ * This function set the speed of the RPLIDAR motor.
+ */
+bool RPLIDAR_SetMotorSpeed(uint16_t rpm);
 
 /**
  * @brief Request the health status in blocking or non-blocking mode.

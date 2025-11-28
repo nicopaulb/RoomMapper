@@ -21,6 +21,7 @@
 #define REQ_SAMPLERATE 0x59
 #define REQ_SCAN_EXPR 0x82
 #define REQ_CONF 0x84
+#define REQ_MOTOR 0xA8
 
 #define RESP_MODE_SINGLE 0x00
 #define RESP_MODE_MULTI 0x01
@@ -32,7 +33,7 @@
 #define RESP_SCAN 0x81
 #define RESP_SCAN_EXPR 0x85
 
-#define BUFFER_RX_SIZE 2048
+#define BUFFER_RX_SIZE 4096
 #define BUFFER_RESP_SIZE 128
 #define BUFFER_DESC_SIZE 7
 
@@ -89,13 +90,15 @@ bool RPLIDAR_Init(UART_HandleTypeDef *huart)
 	rpl_uart = huart;
 	_ResetParser();
 
+	RPLIDAR_Reset();
+
 	// Disable half transfer IT
-	//__HAL_DMA_DISABLE_IT(rpl_uart->hdmarx, DMA_IT_HT);
+	__HAL_DMA_DISABLE_IT(rpl_uart->hdmarx, DMA_IT_HT);
 
 	return (HAL_UARTEx_ReceiveToIdle_DMA(rpl_uart, rpl_rx_buf, BUFFER_RX_SIZE) == HAL_OK);
 }
 
-bool RPLIDAR_StartScan(rplidar_measurement_t *measurement, uint32_t count, uint32_t timeout)
+bool RPLIDAR_StartScan(rplidar_measurement_t measurement[], uint32_t count, uint32_t timeout)
 {
 	uint8_t packet[2] = {START_FLAG, REQ_SCAN};
 
@@ -141,6 +144,19 @@ bool RPLIDAR_StopScan(void)
 bool RPLIDAR_Reset(void)
 {
 	uint8_t packet[2] = {START_FLAG, REQ_RESET};
+	return _SendRequest(packet, sizeof(packet));
+}
+
+bool RPLIDAR_SetMotorSpeed(uint16_t rpm)
+{
+	uint8_t packet[6];
+	packet[0] = START_FLAG;
+	packet[1] = REQ_MOTOR;
+	packet[2] = 0x02;
+	packet[3] = (rpm >> 8) & 0xFF;
+	packet[4] = rpm & 0xFF;
+	packet[5] = _ComputeChecksum(packet, 5);
+
 	return _SendRequest(packet, sizeof(packet));
 }
 

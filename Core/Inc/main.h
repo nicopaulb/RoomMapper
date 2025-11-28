@@ -31,11 +31,6 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "fonts.h"
-#include <ILI9488.h>
-#include "z_displ_ILI9XXX_test.h"
-#include <XPT2046.h>
-#include "z_touch_XPT2046_test.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
