@@ -23,19 +23,24 @@ static volatile bool touched = false;
 
 static uint16_t XPT2046_PollAxis(uint8_t axis);
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	if (GPIO_Pin == config.int_pin) {
-		if (NVIC_GetEnableIRQ(config.int_irq)) {
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if (GPIO_Pin == config.int_pin)
+	{
+		if (NVIC_GetEnableIRQ(config.int_irq))
+		{
 			touched = true;
 		}
 	}
 }
 
-void XPT2046_Init(XPT2046_Config_t conf) {
+void XPT2046_Init(XPT2046_Config_t conf)
+{
 	config = conf;
 }
 
-bool XPT2046_PollTouch() {
+bool XPT2046_PollTouch()
+{
 	const uint8_t pollingLevel = 4;
 	uint8_t k;
 	uint32_t touch;
@@ -48,7 +53,8 @@ bool XPT2046_PollTouch() {
 	return (touch > Z_THRESHOLD);
 }
 
-bool XPT2046_GetTouchPosition(uint16_t *x, uint16_t *y) {
+bool XPT2046_GetTouchPosition(uint16_t *x, uint16_t *y)
+{
 
 	const uint8_t pollingLevel = 4;
 	uint8_t k;
@@ -58,7 +64,8 @@ bool XPT2046_GetTouchPosition(uint16_t *x, uint16_t *y) {
 	for (k = 0; k < (1 << pollingLevel); k++)
 		touch += XPT2046_PollAxis(Z_AXIS);
 	touch >>= pollingLevel;
-	if (touch <= Z_THRESHOLD) {
+	if (touch <= Z_THRESHOLD)
+	{
 		return false;
 	}
 
@@ -66,7 +73,8 @@ bool XPT2046_GetTouchPosition(uint16_t *x, uint16_t *y) {
 	for (k = 0; k < (1 << pollingLevel); k++)
 		touch += XPT2046_PollAxis(X_AXIS);
 	touch >>= pollingLevel;
-	if (touch <= X_THRESHOLD) {
+	if (touch <= X_THRESHOLD)
+	{
 		return false;
 	}
 	touchx = (AX * touch + BX);
@@ -78,7 +86,8 @@ bool XPT2046_GetTouchPosition(uint16_t *x, uint16_t *y) {
 
 	touchy = (AY * touch + BY);
 
-	switch (orientation_cur) {
+	switch (orientation_cur)
+	{
 	case ILI9488_Orientation_0:
 		*x = touchx;
 		*y = touchy;
@@ -100,12 +109,15 @@ bool XPT2046_GetTouchPosition(uint16_t *x, uint16_t *y) {
 	return true;
 }
 
-bool XPT2046_WaitForTouch(uint16_t timeout) {
+bool XPT2046_WaitForTouch(uint16_t timeout)
+{
 	uint32_t start;
 
 	start = HAL_GetTick();
-	while (!touched) {
-		if ((timeout != 0) && ((HAL_GetTick() - start) > timeout)) {
+	while (!touched)
+	{
+		if ((timeout != 0) && ((HAL_GetTick() - start) > timeout))
+		{
 			return false;
 		}
 	};
@@ -114,52 +126,66 @@ bool XPT2046_WaitForTouch(uint16_t timeout) {
 	return true;
 }
 
-bool Touch_WaitForUntouch(uint16_t timeout) {
+bool Touch_WaitForUntouch(uint16_t timeout)
+{
 	uint16_t start;
 
 	start = HAL_GetTick();
-	while (1) {
-		if ((timeout != 0) && ((HAL_GetTick() - start) > timeout)) {
+	while (1)
+	{
+		if ((timeout != 0) && ((HAL_GetTick() - start) > timeout))
+		{
 			return false;
 		}
 
 		if (XPT2046_PollAxis(Z_AXIS) <= Z_THRESHOLD
-				|| XPT2046_PollAxis(X_AXIS) <= X_THRESHOLD) {
+				|| XPT2046_PollAxis(X_AXIS) <= X_THRESHOLD)
+		{
 			return true;
 		}
 	}
 }
 
-bool XPT2046_In_XY_area(uint16_t x1, uint16_t y1, uint16_t width, uint16_t height) {
+bool XPT2046_In_XY_area(uint16_t x1, uint16_t y1, uint16_t width,
+		uint16_t height)
+{
 	uint16_t x, y;
 
-	if (!XPT2046_GetTouchPosition(&x, &y)) {
+	if (!XPT2046_GetTouchPosition(&x, &y))
+	{
 		return false;
 	}
 
 	return x >= x1 && x < x1 + width && y >= y1 && y < y1 + height;
 }
 
-bool XPT2046_GotATouch(void) {
+bool XPT2046_GotATouch(void)
+{
 	bool result = touched;
 	touched = false;
 	return result;
 }
 
-static uint16_t XPT2046_PollAxis(uint8_t axis) {
-	uint8_t poll[2] = { 0, 0 };
+static uint16_t XPT2046_PollAxis(uint8_t axis)
+{
+	uint8_t poll[2] =
+	{ 0, 0 };
 	uint32_t poll16;
 
 	HAL_NVIC_DisableIRQ(config.int_irq);
-	HAL_NVIC_ClearPendingIRQ(config.int_irq);
 
 	HAL_SPI_Transmit(config.spi, &axis, 1, 10);
-	if (HAL_SPI_Receive(config.spi, poll, 2, 10) == HAL_OK) {
+	if (HAL_SPI_Receive(config.spi, poll, 2, 10) == HAL_OK)
+	{
 		poll16 = (poll[0] << 8) + poll[1];
-	} else {
+	}
+	else
+	{
 		poll16 = 0;
 	}
 
+	__HAL_GPIO_EXTI_CLEAR_IT(config.int_pin);
+	HAL_NVIC_ClearPendingIRQ(config.int_irq);
 	HAL_NVIC_EnableIRQ(config.int_irq);
 	return poll16;
 }
