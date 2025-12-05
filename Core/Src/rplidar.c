@@ -59,8 +59,8 @@ typedef enum response_type
 } response_type_t;
 
 static UART_HandleTypeDef *rpl_uart;
-
-static uint8_t rpl_rx_buf[BUFFER_RX_SIZE] __attribute__((aligned(4)));
+static uint8_t rpl_rx_buf[BUFFER_RX_SIZE] __attribute__((aligned(4))); // 32-bits aligned for DMA
+static uint16_t rpl_rx_tail = 0;
 static uint8_t rpl_resp_buf[BUFFER_RESP_SIZE];
 static uint8_t rpl_resp_len = 0;
 static response_type_t rpl_resp_type = RESPONSE_UNKNOWN;
@@ -74,7 +74,7 @@ static void _ParseRX(uint8_t *data, uint16_t len);
 static parser_state_t _ParseDescriptor(uint8_t *buf);
 static response_type_t _ParseRspType(uint8_t type);
 static bool _ParseResponse(uint8_t *response, uint16_t size);
-static bool _SendRequest(uint8_t *data, uint16_t size);
+static bool _SendRequest(uint8_t *data, uint16_t size, bool resp);
 static uint8_t _ComputeChecksum(uint8_t *data, uint16_t size);
 static void _ResetParser(void);
 static bool _WaitForResponse(response_type_t type, uint32_t timeout);
@@ -88,14 +88,8 @@ bool RPLIDAR_Init(UART_HandleTypeDef *huart)
 	}
 
 	rpl_uart = huart;
-	_ResetParser();
 
-	RPLIDAR_Reset();
-
-	// Disable half transfer IT
-	__HAL_DMA_DISABLE_IT(rpl_uart->hdmarx, DMA_IT_HT);
-
-	return (HAL_UARTEx_ReceiveToIdle_DMA(rpl_uart, rpl_rx_buf, BUFFER_RX_SIZE) == HAL_OK);
+	return RPLIDAR_Reset();
 }
 
 bool RPLIDAR_StartScan(rplidar_measurement_t measurement[], uint32_t count, uint32_t timeout)
@@ -107,7 +101,7 @@ bool RPLIDAR_StartScan(rplidar_measurement_t measurement[], uint32_t count, uint
 	rpl_usr_buf = (uint8_t *)measurement;
 	rpl_multiresp_remaining = count;
 
-	if (!_SendRequest(packet, sizeof(packet)))
+	if (!_SendRequest(packet, sizeof(packet), true))
 	{
 		return false;
 	}
@@ -126,7 +120,7 @@ bool RPLIDAR_StartScanExpress(rplidar_dense_measurements_t *measurements, uint32
 	rpl_usr_buf = (uint8_t *)measurements;
 	rpl_multiresp_remaining = count;
 
-	if (!_SendRequest(packet, sizeof(packet)))
+	if (!_SendRequest(packet, sizeof(packet), true))
 	{
 		return false;
 	}
@@ -138,13 +132,20 @@ bool RPLIDAR_StartScanExpress(rplidar_dense_measurements_t *measurements, uint32
 bool RPLIDAR_StopScan(void)
 {
 	uint8_t packet[2] = {START_FLAG, REQ_STOP};
-	return _SendRequest(packet, sizeof(packet));
+	return _SendRequest(packet, sizeof(packet), false);
 }
 
 bool RPLIDAR_Reset(void)
 {
 	uint8_t packet[2] = {START_FLAG, REQ_RESET};
-	return _SendRequest(packet, sizeof(packet));
+
+	_ResetParser();
+
+	if(_SendRequest(packet, sizeof(packet), false)) {
+		HAL_Delay(1000);
+		return true;
+	}
+	return false;
 }
 
 bool RPLIDAR_SetMotorSpeed(uint16_t rpm)
@@ -157,7 +158,7 @@ bool RPLIDAR_SetMotorSpeed(uint16_t rpm)
 	packet[4] = rpm & 0xFF;
 	packet[5] = _ComputeChecksum(packet, 5);
 
-	return _SendRequest(packet, sizeof(packet));
+	return _SendRequest(packet, sizeof(packet), false);
 }
 
 bool RPLIDAR_RequestDeviceInfo(rplidar_info_t *info, uint32_t timeout)
@@ -168,7 +169,7 @@ bool RPLIDAR_RequestDeviceInfo(rplidar_info_t *info, uint32_t timeout)
 	// If null then use internal buffer and callback
 	rpl_usr_buf = (uint8_t *)info;
 
-	if (!_SendRequest(packet, sizeof(packet)))
+	if (!_SendRequest(packet, sizeof(packet), true))
 	{
 		return false;
 	}
@@ -185,7 +186,7 @@ bool RPLIDAR_RequestHealth(rplidar_health_t *health, uint32_t timeout)
 	// If null then use internal buffer and callback
 	rpl_usr_buf = (uint8_t *)health;
 
-	if (!_SendRequest(packet, sizeof(packet)))
+	if (!_SendRequest(packet, sizeof(packet), true))
 	{
 		return false;
 	}
@@ -202,7 +203,7 @@ bool RPLIDAR_RequestSampleRate(rplidar_samplerate_t *samplerate, uint32_t timeou
 	// If null then use internal buffer and callback
 	rpl_usr_buf = (uint8_t *)samplerate;
 
-	if (!_SendRequest(packet, sizeof(packet)))
+	if (!_SendRequest(packet, sizeof(packet), true))
 	{
 		return false;
 	}
@@ -233,7 +234,7 @@ bool RPLIDAR_RequestConfiguration(uint32_t type, uint8_t *payload, uint16_t payl
 	// If null then use internal buffer and callback
 	rpl_usr_buf = (uint8_t *)config;
 
-	if (!_SendRequest(packet, sizeof(packet)))
+	if (!_SendRequest(packet, sizeof(packet), true))
 	{
 		return false;
 	}
@@ -274,7 +275,6 @@ __attribute__((weak)) void RPLIDAR_OnDenseMeasurements(rplidar_dense_measurement
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t head)
 {
-	static uint16_t rpl_rx_tail = 0;
 	if (huart->Instance == rpl_uart->Instance)
 	{
 		if (head > rpl_rx_tail)
@@ -343,6 +343,7 @@ static void _ParseRX(uint8_t *data, uint16_t len)
 
 			break;
 		case PARSER_ERROR:
+			// TODO Handle parsing error. Maybe reset RPLIDAR ?
 			return;
 		}
 	}
@@ -432,6 +433,10 @@ static bool _ParseResponse(uint8_t *response, uint16_t size)
 		if (size == sizeof(rplidar_measurement_t))
 		{
 			rplidar_measurement_t *measurement = (rplidar_measurement_t *)response;
+			if(measurement->check != 1) {
+				return false;
+			}
+
 			if (rpl_usr_buf != NULL)
 			{
 				// Use user buffer
@@ -535,14 +540,17 @@ static parser_state_t _ParseDescriptor(uint8_t *buf)
 	}
 }
 
-static bool _SendRequest(uint8_t *data, uint16_t size)
+static bool _SendRequest(uint8_t *data, uint16_t size, bool resp)
 {
-	if (HAL_UART_AbortTransmit(rpl_uart) != HAL_OK)
-	{
-		return false;
-	}
-
 	_ResetParser();
+
+	if(resp) {
+		// Expect a response, so enable receive DMA
+		if(HAL_UARTEx_ReceiveToIdle_DMA(rpl_uart, rpl_rx_buf, BUFFER_RX_SIZE) != HAL_OK)
+		{
+			return false;
+		}
+	}
 
 	return (HAL_UART_Transmit_DMA(rpl_uart, data, size) == HAL_OK);
 }
@@ -559,7 +567,9 @@ static uint8_t _ComputeChecksum(uint8_t *data, uint16_t size)
 
 static void _ResetParser(void)
 {
+	HAL_UART_Abort(rpl_uart);
 	rpl_parser_state = PARSER_DESCRIPTOR;
+	rpl_rx_tail = 0;
 	rpl_resp_len = 0;
 	rpl_resp_type = RESPONSE_UNKNOWN;
 	rpl_last_complete_resp = RESPONSE_UNKNOWN;

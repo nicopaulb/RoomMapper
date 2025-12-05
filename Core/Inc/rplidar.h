@@ -67,6 +67,7 @@ typedef struct __attribute__((packed))
  * @return True if initialization is successful, false otherwise.
  *
  * This function sets up the necessary buffers and DMA configurations for communication with the RPLIDAR.
+ * Wait at least 500ms before sending another request.
  */
 bool RPLIDAR_Init(UART_HandleTypeDef *huart);
 
