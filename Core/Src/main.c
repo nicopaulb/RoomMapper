@@ -53,6 +53,7 @@ DMA_HandleTypeDef hdma_spi1_tx;
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -70,11 +71,20 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void diag_print_status(void) {
+static void diag_print_status(void)
+{
 	rplidar_info_t info;
 	rplidar_health_t health;
 	rplidar_samplerate_t s_samplerate;
 	char str[128];
+
+	RPLIDAR_RequestHealth(&health, 5000);
+	snprintf(str, sizeof(str), "HEALTH");
+	ILI9488_WString(70, 150, str, Font24, 1, RED, BLACK);
+	snprintf(str, sizeof(str), "Status : %hu", health.status);
+	ILI9488_WString(20, 180, str, Font20, 1, WHITE, BLACK);
+	snprintf(str, sizeof(str), "Error :  %hu", health.error_code);
+	ILI9488_WString(20, 200, str, Font20, 1, WHITE, BLACK);
 
 	RPLIDAR_RequestDeviceInfo(&info, 5000);
 	snprintf(str, sizeof(str), "INFO");
@@ -87,14 +97,6 @@ static void diag_print_status(void) {
 	snprintf(str, sizeof(str), "HW :    %hu", info.hardware);
 	ILI9488_WString(20, 110, str, Font20, 1, WHITE, BLACK);
 
-	RPLIDAR_RequestHealth(&health, 5000);
-	snprintf(str, sizeof(str), "HEALTH");
-	ILI9488_WString(70, 150, str, Font24, 1, RED, BLACK);
-	snprintf(str, sizeof(str), "Status : %hu", health.status);
-	ILI9488_WString(20, 180, str, Font20, 1, WHITE, BLACK);
-	snprintf(str, sizeof(str), "Error :  %hu", health.error_code);
-	ILI9488_WString(20, 200, str, Font20, 1, WHITE, BLACK);
-
 	RPLIDAR_RequestSampleRate(&s_samplerate, 5000);
 	snprintf(str, sizeof(str), "SAMPLERATE");
 	ILI9488_WString(250, 40, str, Font24, 1, RED, BLACK);
@@ -104,7 +106,8 @@ static void diag_print_status(void) {
 	ILI9488_WString(220, 90, str, Font20, 1, WHITE, BLACK);
 }
 
-static void diag_print_sample(rplidar_measurement_t sample) {
+static void diag_print_sample(rplidar_measurement_t sample)
+{
 	char str[128];
 
 	ILI9488_FillScreen(BLACK);
@@ -127,7 +130,8 @@ static void diag_print_sample(rplidar_measurement_t sample) {
  * @brief  The application entry point.
  * @retval int
  */
-int main(void) {
+int main(void)
+{
 
 	/* USER CODE BEGIN 1 */
 
@@ -156,44 +160,34 @@ int main(void) {
 	MX_SPI1_Init();
 	MX_SPI2_Init();
 	/* USER CODE BEGIN 2 */
+
+	HAL_Delay(2000);
 	RPLIDAR_Init(&huart1);
 
-	ILI9488_Config_t ili9488_config = { .spi = &hspi1, .dc_port =
+	ILI9488_Config_t ili9488_config =
+	{ .spi = &hspi1, .dc_port =
 	DISPL_DC_GPIO_Port, .dc_pin = DISPL_DC_Pin, .rst_port =
 	DISPL_RST_GPIO_Port, .rst_pin = DISPL_RST_Pin };
 
 	ILI9488_Init(ili9488_config, ILI9488_Orientation_90);
 	ILI9488_FillScreen(BLACK);
 
-	XPT2046_Config_t xpt2046_config = { .spi = &hspi2, .int_pin = TOUCH_INT_Pin,
-			.int_irq = TOUCH_INT_EXTI_IRQn };
+	XPT2046_Config_t xpt2046_config =
+	{ .spi = &hspi2, .int_pin = TOUCH_INT_Pin, .int_irq = TOUCH_INT_EXTI_IRQn };
 	XPT2046_Init(xpt2046_config);
 
 	diag_print_status();
-	/* USER CODE END 2 */
-
 	HAL_Delay(1000);
-
 	MAP_Init();
-
+	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
-	while (1) {
+	while (1)
+	{
 		HAL_GPIO_TogglePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin);
 		MAP_DrawSamples();
-
-		if(XPT2046_GotATouch()) {
-			static bool running = true;
-			if(running) {
-				MAP_SetScaleMode(MAP_SCALE_AUTO);
-				//RPLIDAR_StopScan();
-			}
-			else {
-				//RPLIDAR_StartScan(NULL, 0, 0);
-			}
-			running = !running;
-		}
+		MAP_HandleTouch();
 
 //	HAL_Delay(1000);
 
@@ -204,15 +198,16 @@ int main(void) {
 	/* USER CODE END 3 */
 }
 
-
-
 /**
  * @brief System Clock Configuration
  * @retval None
  */
-void SystemClock_Config(void) {
-	RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
-	RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
+void SystemClock_Config(void)
+{
+	RCC_OscInitTypeDef RCC_OscInitStruct =
+	{ 0 };
+	RCC_ClkInitTypeDef RCC_ClkInitStruct =
+	{ 0 };
 
 	/** Configure the main internal regulator output voltage
 	 */
@@ -230,7 +225,8 @@ void SystemClock_Config(void) {
 	RCC_OscInitStruct.PLL.PLLN = 192;
 	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
 	RCC_OscInitStruct.PLL.PLLQ = 4;
-	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+	{
 		Error_Handler();
 	}
 
@@ -243,7 +239,8 @@ void SystemClock_Config(void) {
 	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
 	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK) {
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
+	{
 		Error_Handler();
 	}
 }
@@ -253,7 +250,8 @@ void SystemClock_Config(void) {
  * @param None
  * @retval None
  */
-static void MX_SPI1_Init(void) {
+static void MX_SPI1_Init(void)
+{
 
 	/* USER CODE BEGIN SPI1_Init 0 */
 
@@ -275,7 +273,8 @@ static void MX_SPI1_Init(void) {
 	hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
 	hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
 	hspi1.Init.CRCPolynomial = 10;
-	if (HAL_SPI_Init(&hspi1) != HAL_OK) {
+	if (HAL_SPI_Init(&hspi1) != HAL_OK)
+	{
 		Error_Handler();
 	}
 	/* USER CODE BEGIN SPI1_Init 2 */
@@ -289,7 +288,8 @@ static void MX_SPI1_Init(void) {
  * @param None
  * @retval None
  */
-static void MX_SPI2_Init(void) {
+static void MX_SPI2_Init(void)
+{
 
 	/* USER CODE BEGIN SPI2_Init 0 */
 
@@ -311,7 +311,8 @@ static void MX_SPI2_Init(void) {
 	hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
 	hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
 	hspi2.Init.CRCPolynomial = 10;
-	if (HAL_SPI_Init(&hspi2) != HAL_OK) {
+	if (HAL_SPI_Init(&hspi2) != HAL_OK)
+	{
 		Error_Handler();
 	}
 	/* USER CODE BEGIN SPI2_Init 2 */
@@ -325,7 +326,8 @@ static void MX_SPI2_Init(void) {
  * @param None
  * @retval None
  */
-static void MX_USART1_UART_Init(void) {
+static void MX_USART1_UART_Init(void)
+{
 
 	/* USER CODE BEGIN USART1_Init 0 */
 
@@ -342,7 +344,8 @@ static void MX_USART1_UART_Init(void) {
 	huart1.Init.Mode = UART_MODE_TX_RX;
 	huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
 	huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-	if (HAL_UART_Init(&huart1) != HAL_OK) {
+	if (HAL_UART_Init(&huart1) != HAL_OK)
+	{
 		Error_Handler();
 	}
 	/* USER CODE BEGIN USART1_Init 2 */
@@ -354,7 +357,8 @@ static void MX_USART1_UART_Init(void) {
 /**
  * Enable DMA controller clock
  */
-static void MX_DMA_Init(void) {
+static void MX_DMA_Init(void)
+{
 
 	/* DMA controller clock enable */
 	__HAL_RCC_DMA2_CLK_ENABLE();
@@ -377,8 +381,10 @@ static void MX_DMA_Init(void) {
  * @param None
  * @retval None
  */
-static void MX_GPIO_Init(void) {
-	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+static void MX_GPIO_Init(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct =
+	{ 0 };
 	/* USER CODE BEGIN MX_GPIO_Init_1 */
 
 	/* USER CODE END MX_GPIO_Init_1 */
@@ -404,7 +410,7 @@ static void MX_GPIO_Init(void) {
 
 	/*Configure GPIO pin : TOUCH_INT_Pin */
 	GPIO_InitStruct.Pin = TOUCH_INT_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+	GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(TOUCH_INT_GPIO_Port, &GPIO_InitStruct);
 
@@ -432,11 +438,13 @@ static void MX_GPIO_Init(void) {
  * @brief  This function is executed in case of error occurrence.
  * @retval None
  */
-void Error_Handler(void) {
+void Error_Handler(void)
+{
 	/* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
 	__disable_irq();
-	while (1) {
+	while (1)
+	{
 	}
 	/* USER CODE END Error_Handler_Debug */
 }
