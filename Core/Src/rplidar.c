@@ -142,7 +142,7 @@ bool RPLIDAR_Reset(void)
 	_ResetParser();
 
 	if(_SendRequest(packet, sizeof(packet), false)) {
-		HAL_Delay(1000);
+		HAL_Delay(600);
 		return true;
 	}
 	return false;
