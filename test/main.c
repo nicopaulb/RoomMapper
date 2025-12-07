@@ -19,7 +19,6 @@ typedef enum
 UART_HandleTypeDef huart1;
 
 extern uint8_t *buf;
-static uint16_t head = 0;
 static callback_type_t cb_type = None;
 
 static void test_device_info_request(void);
@@ -44,6 +43,7 @@ int main()
 
 static void test_device_info_request(void)
 {
+    uint16_t head = 0;
     printf("test_device_info_request : ");
     cb_type = None;
 
@@ -62,7 +62,7 @@ static void test_device_info_request(void)
 #define FW_MAJOR 2
 #define FW_MINOR 3
 #define HARDWARE 5
-    buf[head++] = MODEL_SUB << 4 | MODEL_MAJOR;
+    buf[head++] = MODEL_MAJOR << 4 | MODEL_SUB;
     buf[head++] = FW_MINOR;
     buf[head++] = FW_MAJOR;
     buf[head++] = HARDWARE;
@@ -85,6 +85,7 @@ void RPLIDAR_OnDeviceInfo(rplidar_info_t *info)
 
 static void test_health_request(void)
 {
+    uint16_t head = 0;
     printf("test_health_request : ");
     cb_type = None;
 
@@ -117,6 +118,7 @@ void RPLIDAR_OnHealth(rplidar_health_t *health)
 
 static void test_samplerate_request(void)
 {
+    uint16_t head = 0;
     printf("test_samplerate_request : ");
     cb_type = None;
 
@@ -150,8 +152,14 @@ void RPLIDAR_OnSampleRate(rplidar_samplerate_t *samplerate)
 
 static void test_configuration_request(void)
 {
+    uint16_t head = 0;
+    uint8_t payload[3] = {0};
     printf("test_configuration_request : ");
     cb_type = None;
+
+#define TYPE 0x70
+#define PAYLOAD 3
+    RPLIDAR_RequestConfiguration(TYPE, payload, PAYLOAD, NULL, 0);
 
     // Send info descriptor
     buf[head++] = 0xA5;
@@ -161,8 +169,6 @@ static void test_configuration_request(void)
     buf[head++] = 0x00;
     buf[head++] = 0x00;
     buf[head++] = 0x20;
-#define TYPE 0x70
-#define PAYLOAD 3
     buf[head++] = TYPE & 0xFF;
     buf[head++] = (TYPE & 0xFF00) >> 8;
     buf[head++] = (TYPE & 0xFF0000) >> 16;
@@ -185,6 +191,7 @@ void RPLIDAR_OnConfiguration(rplidar_configuration_t *config)
 
 static void test_scan_request(void)
 {
+    uint16_t head = 0;
     printf("test_scan_request : ");
     cb_type = None;
 
@@ -224,6 +231,7 @@ void RPLIDAR_OnSingleMeasurement(rplidar_measurement_t *measurement)
 
 static void test_scan_express_request(void)
 {
+    uint16_t head = 0;
     printf("test_scan_express_request : ");
     cb_type = None;
 

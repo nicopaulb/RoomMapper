@@ -14,7 +14,7 @@ HAL_StatusTypeDef HAL_UART_Transmit_DMA(UART_HandleTypeDef *huart, const uint8_t
     return HAL_OK;
 }
 
-HAL_StatusTypeDef HAL_UART_AbortTransmit(UART_HandleTypeDef *huart)
+HAL_StatusTypeDef HAL_UART_Abort(UART_HandleTypeDef *huart)
 {
     return HAL_OK;
 }
@@ -22,4 +22,9 @@ HAL_StatusTypeDef HAL_UART_AbortTransmit(UART_HandleTypeDef *huart)
 uint32_t HAL_GetTick(void)
 {
     return 1234;
+}
+
+void HAL_Delay(uint32_t Delay)
+{
+    return;
 }
