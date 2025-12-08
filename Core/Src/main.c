@@ -27,6 +27,7 @@
 #include "ILI9488.h"
 #include "XPT2046.h"
 #include "rplidar.h"
+#include "menu.h"
 #include "map.h"
 /* USER CODE END Includes */
 
@@ -71,58 +72,7 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void diag_print_status(void)
-{
-    rplidar_info_t info;
-    rplidar_health_t health;
-    rplidar_samplerate_t s_samplerate;
-    char str[128];
 
-    RPLIDAR_RequestHealth(&health, 5000);
-    snprintf(str, sizeof(str), "HEALTH");
-    ILI9488_WString(70, 150, str, Font24, 1, RED, BLACK);
-    snprintf(str, sizeof(str), "Status : %hu", health.status);
-    ILI9488_WString(20, 180, str, Font20, 1, WHITE, BLACK);
-    snprintf(str, sizeof(str), "Error :  %hu", health.error_code);
-    ILI9488_WString(20, 200, str, Font20, 1, WHITE, BLACK);
-
-    RPLIDAR_RequestDeviceInfo(&info, 5000);
-    snprintf(str, sizeof(str), "INFO");
-    ILI9488_WString(70, 40, str, Font24, 1, RED, BLACK);
-    snprintf(str, sizeof(str), "Model : %hu.%hu", info.model_major, info.model_sub);
-    ILI9488_WString(20, 70, str, Font20, 1, WHITE, BLACK);
-    snprintf(str, sizeof(str), "FW :    %hu.%hu", info.fw_major, info.fw_minor);
-    ILI9488_WString(20, 90, str, Font20, 1, WHITE, BLACK);
-    snprintf(str, sizeof(str), "HW :    %hu", info.hardware);
-    ILI9488_WString(20, 110, str, Font20, 1, WHITE, BLACK);
-
-    RPLIDAR_RequestSampleRate(&s_samplerate, 5000);
-    snprintf(str, sizeof(str), "SAMPLERATE");
-    ILI9488_WString(250, 40, str, Font24, 1, RED, BLACK);
-    snprintf(str, sizeof(str), "Standart : %hu", s_samplerate.tstandart);
-    ILI9488_WString(220, 70, str, Font20, 1, WHITE, BLACK);
-    snprintf(str, sizeof(str), "Express :  %hu", s_samplerate.texpress);
-    ILI9488_WString(220, 90, str, Font20, 1, WHITE, BLACK);
-}
-
-static void diag_print_sample(rplidar_measurement_t sample)
-{
-    char str[128];
-
-    ILI9488_FillScreen(BLACK);
-    snprintf(str, sizeof(str), "SAMPLE");
-    ILI9488_WString(70, 40, str, Font24, 1, RED, BLACK);
-    snprintf(str, sizeof(str), "Start :       %hu", sample.start);
-    ILI9488_WString(20, 70, str, Font20, 1, WHITE, BLACK);
-    snprintf(str, sizeof(str), "Quality :     %hu", sample.quality);
-    ILI9488_WString(20, 90, str, Font20, 1, WHITE, BLACK);
-    snprintf(str, sizeof(str), "Distance :    %f", sample.distance / 4.0);
-    ILI9488_WString(20, 110, str, Font20, 1, WHITE, BLACK);
-    snprintf(str, sizeof(str), "Angle :       %f", sample.angle / 64.0);
-    ILI9488_WString(20, 130, str, Font20, 1, WHITE, BLACK);
-    snprintf(str, sizeof(str), "Check :       %hu", sample.check);
-    ILI9488_WString(20, 150, str, Font20, 1, WHITE, BLACK);
-}
 /* USER CODE END 0 */
 
 /**
@@ -163,23 +113,17 @@ int main(void)
     /* USER CODE BEGIN 2 */
     RPLIDAR_Init(&huart1);
     ILI9488_Init(ili9488_config, ILI9488_Orientation_90);
-    ILI9488_FillScreen(BLACK);
     XPT2046_Init(xpt2046_config);
 
-    diag_print_status();
-    HAL_Delay(1000);
-    MAP_Init();
+    MENU_SetScreen(MENU_SCREEN_MAIN);
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1)
     {
-        HAL_GPIO_TogglePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin);
-        MAP_DrawSamples();
-        MAP_HandleTouch();
-
-//	HAL_Delay(1000);
+        MENU_UpdateScreen();
+        MENU_HandleTouch();
 
         /* USER CODE END WHILE */
 

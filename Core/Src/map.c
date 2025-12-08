@@ -103,7 +103,7 @@ static void _DrawPersistanceButtons(map_persistence_mode_e mode);
 static void _DrawDistanceInfo(const point_t *p1, const point_t *p2);
 static double _GetDistancePoints(const point_t *p1, const point_t *p2);
 
-void MAP_Init(void)
+void MAP_Show(void)
 {
     MAP_SetScaleMode(MAP_SCALE_AUTO);
     MAP_SetQuality(SAMPLE_QUALITY_DEFAULT);
@@ -172,142 +172,136 @@ void MAP_DrawSamples(void)
     }
 }
 
-void MAP_HandleTouch(void)
+void MAP_Touch(uint16_t x, uint16_t y)
 {
-    uint16_t x = 0;
-    uint16_t y = 0;
+    uint32_t tick_cur = HAL_GetTick();
 
-    if (XPT2046_GotATouch() && XPT2046_GetTouchPosition(&x, &y))
+    if (x >= MAP_BUTTON_START_X && x < MAP_BUTTON_START_X + MAP_BUTTON_START_W && y >= MAP_BUTTON_START_Y
+            && y < MAP_BUTTON_START_Y + MAP_BUTTON_START_H)
     {
-        uint32_t tick_cur = HAL_GetTick();
-
-        if (x >= MAP_BUTTON_START_X && x < MAP_BUTTON_START_X + MAP_BUTTON_START_W && y >= MAP_BUTTON_START_Y
-                && y < MAP_BUTTON_START_Y + MAP_BUTTON_START_H)
+        // Button START/STOP pressed
+        static uint32_t tick_pressed = 0;
+        if (tick_cur - tick_pressed < MAP_BUTTON_START_DEBOUNCE_TIMER)
         {
-            // Button START/STOP pressed
-            static uint32_t tick_pressed = 0;
-            if (tick_cur - tick_pressed < MAP_BUTTON_START_DEBOUNCE_TIMER)
-            {
-                return;
-            }
-            tick_pressed = tick_cur;
-
-            static bool running = false;
-            if (running)
-            {
-                RPLIDAR_StopScan();
-            }
-            else
-            {
-                RPLIDAR_StartScan(NULL, 0, 0);
-            }
-            running = !running;
-            _DrawButtonStart(running);
+            return;
         }
-        else if (x >= MAP_BUTTON_SCALE_X && x < MAP_BUTTON_SCALE_X + MAP_BUTTON_SCALE_W && y >= MAP_BUTTON_SCALE_Y
-                && y < MAP_BUTTON_SCALE_Y + MAP_BUTTON_SCALE_H)
+        tick_pressed = tick_cur;
+
+        static bool running = false;
+        if (running)
         {
-            // Button SCALE MODE pressed
-            static uint32_t tick_pressed = 0;
-            if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
-            {
-                return;
-            }
-            tick_pressed = tick_cur;
-
-            map_scale_mode_e new_mode = (map_scale_mode + 1) % MAP_SCALE_MAX;
-            MAP_SetScaleMode(new_mode);
-            _DrawButtonScale(map_scale_mode);
-            _DrawMapScale(map_scale_distance_max / 5000.0);
-            MAP_ClearPoints(false);
+            RPLIDAR_StopScan();
         }
-        else if (x >= MAP_BUTTON_QUAL_MINUS_X && x < MAP_BUTTON_QUAL_MINUS_X + MAP_BUTTON_QUAL_MINUS_W
-                && y >= MAP_BUTTON_QUAL_MINUS_Y && y < MAP_BUTTON_QUAL_MINUS_Y + MAP_BUTTON_QUAL_MINUS_H)
+        else
         {
-            // Button QUALITY - pressed
-            static uint32_t tick_pressed = 0;
-            if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
-            {
-                return;
-            }
-            tick_pressed = tick_cur;
-
-            uint8_t new_quality = map_quality_min < 6 ? 0 : (map_quality_min - 6);
-
-            MAP_SetQuality(new_quality);
-            _DrawQualityMinimum(map_quality_min);
-            MAP_ClearPoints(true);
+            RPLIDAR_StartScan(NULL, 0, 0);
         }
-        else if (x >= MAP_BUTTON_QUAL_PLUS_X && x < MAP_BUTTON_QUAL_PLUS_X + MAP_BUTTON_QUAL_PLUS_W
-                && y >= MAP_BUTTON_QUAL_PLUS_Y && y < MAP_BUTTON_QUAL_PLUS_Y + MAP_BUTTON_QUAL_PLUS_H)
+        running = !running;
+        _DrawButtonStart(running);
+    }
+    else if (x >= MAP_BUTTON_SCALE_X && x < MAP_BUTTON_SCALE_X + MAP_BUTTON_SCALE_W && y >= MAP_BUTTON_SCALE_Y
+            && y < MAP_BUTTON_SCALE_Y + MAP_BUTTON_SCALE_H)
+    {
+        // Button SCALE MODE pressed
+        static uint32_t tick_pressed = 0;
+        if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
         {
-            // Button QUALITY + pressed
-            static uint32_t tick_pressed = 0;
-            if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
-            {
-                return;
-            }
-            tick_pressed = tick_cur;
-
-            uint8_t new_quality = map_quality_min > 57 ? 63 : (map_quality_min + 6);
-
-            MAP_SetQuality(new_quality);
-            _DrawQualityMinimum(map_quality_min);
-            MAP_ClearPoints(true);
+            return;
         }
-        else if (x >= MAP_BUTTON_PERS_MODE_X && x < MAP_BUTTON_PERS_MODE_X + MAP_BUTTON_PERS_MODE_W
-                && y >= MAP_BUTTON_PERS_MODE_Y && y < MAP_BUTTON_PERS_MODE_Y + MAP_BUTTON_PERS_MODE_H)
+        tick_pressed = tick_cur;
+
+        map_scale_mode_e new_mode = (map_scale_mode + 1) % MAP_SCALE_MAX;
+        MAP_SetScaleMode(new_mode);
+        _DrawButtonScale(map_scale_mode);
+        _DrawMapScale(map_scale_distance_max / 5000.0);
+        MAP_ClearPoints(false);
+    }
+    else if (x >= MAP_BUTTON_QUAL_MINUS_X && x < MAP_BUTTON_QUAL_MINUS_X + MAP_BUTTON_QUAL_MINUS_W
+            && y >= MAP_BUTTON_QUAL_MINUS_Y && y < MAP_BUTTON_QUAL_MINUS_Y + MAP_BUTTON_QUAL_MINUS_H)
+    {
+        // Button QUALITY - pressed
+        static uint32_t tick_pressed = 0;
+        if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
         {
-            // Button PERSISTENCE MODE pressed
-            static uint32_t tick_pressed = 0;
-            if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
-            {
-                return;
-            }
-            tick_pressed = tick_cur;
-
-            map_persistence_mode_e new_mode = (map_persistence_mode + 1) % MAP_PERSIST_MAX;
-            MAP_SetPersistanceMode(new_mode);
-            _DrawPersistanceButtons(map_persistence_mode);
-            MAP_ClearPoints(false);
+            return;
         }
-        else if (x >= MAP_BUTTON_PERS_CLEAR_X && x < MAP_BUTTON_PERS_CLEAR_X + MAP_BUTTON_PERS_CLEAR_W
-                && y >= MAP_BUTTON_PERS_CLEAR_Y && y < MAP_BUTTON_PERS_CLEAR_Y + MAP_BUTTON_PERS_CLEAR_H)
+        tick_pressed = tick_cur;
+
+        uint8_t new_quality = map_quality_min < 6 ? 0 : (map_quality_min - 6);
+
+        MAP_SetQuality(new_quality);
+        _DrawQualityMinimum(map_quality_min);
+        MAP_ClearPoints(true);
+    }
+    else if (x >= MAP_BUTTON_QUAL_PLUS_X && x < MAP_BUTTON_QUAL_PLUS_X + MAP_BUTTON_QUAL_PLUS_W
+            && y >= MAP_BUTTON_QUAL_PLUS_Y && y < MAP_BUTTON_QUAL_PLUS_Y + MAP_BUTTON_QUAL_PLUS_H)
+    {
+        // Button QUALITY + pressed
+        static uint32_t tick_pressed = 0;
+        if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
         {
-            // Button CLEAR pressed
-            static uint32_t tick_pressed = 0;
-            if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
-            {
-                return;
-            }
-            tick_pressed = tick_cur;
-            MAP_ClearPoints(true);
+            return;
         }
-        else if (x >= MAP_TOOLBAR_WIDTH && x <= (MAP_TOOLBAR_WIDTH + MAP_SIZE))
+        tick_pressed = tick_cur;
+
+        uint8_t new_quality = map_quality_min > 57 ? 63 : (map_quality_min + 6);
+
+        MAP_SetQuality(new_quality);
+        _DrawQualityMinimum(map_quality_min);
+        MAP_ClearPoints(true);
+    }
+    else if (x >= MAP_BUTTON_PERS_MODE_X && x < MAP_BUTTON_PERS_MODE_X + MAP_BUTTON_PERS_MODE_W
+            && y >= MAP_BUTTON_PERS_MODE_Y && y < MAP_BUTTON_PERS_MODE_Y + MAP_BUTTON_PERS_MODE_H)
+    {
+        // Button PERSISTENCE MODE pressed
+        static uint32_t tick_pressed = 0;
+        if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
         {
-            // Press on RADAR area
-            static uint32_t tick_pressed = 0;
-            if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
-            {
-                return;
-            }
-            tick_pressed = tick_cur;
-
-            // Remove old point and redraw center reference point
-            if (map_selected_point[map_selected_point_idx].x != 0)
-            {
-                ILI9488_FillCircle(map_selected_point[map_selected_point_idx].x,
-                                   map_selected_point[map_selected_point_idx].y, 3, BLACK);
-                ILI9488_FillCircle(map_center_point.x, map_center_point.y, 3, map_center_point.color);
-            }
-
-            map_selected_point[map_selected_point_idx].x = x;
-            map_selected_point[map_selected_point_idx].y = y;
-            map_selected_point[map_selected_point_idx].color = map_selected_point_idx == 0 ? BLUE : CYAN;
-            ILI9488_FillCircle(x, y, 3, map_selected_point[map_selected_point_idx].color);
-            _DrawDistanceInfo(&map_selected_point[0], &map_selected_point[1]);
-            map_selected_point_idx = (map_selected_point_idx + 1) % 2;
+            return;
         }
+        tick_pressed = tick_cur;
+
+        map_persistence_mode_e new_mode = (map_persistence_mode + 1) % MAP_PERSIST_MAX;
+        MAP_SetPersistanceMode(new_mode);
+        _DrawPersistanceButtons(map_persistence_mode);
+        MAP_ClearPoints(false);
+    }
+    else if (x >= MAP_BUTTON_PERS_CLEAR_X && x < MAP_BUTTON_PERS_CLEAR_X + MAP_BUTTON_PERS_CLEAR_W
+            && y >= MAP_BUTTON_PERS_CLEAR_Y && y < MAP_BUTTON_PERS_CLEAR_Y + MAP_BUTTON_PERS_CLEAR_H)
+    {
+        // Button CLEAR pressed
+        static uint32_t tick_pressed = 0;
+        if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
+        {
+            return;
+        }
+        tick_pressed = tick_cur;
+        MAP_ClearPoints(true);
+    }
+    else if (x >= MAP_TOOLBAR_WIDTH && x <= (MAP_TOOLBAR_WIDTH + MAP_SIZE))
+    {
+        // Press on RADAR area
+        static uint32_t tick_pressed = 0;
+        if (tick_cur - tick_pressed < MAP_BUTTON_DEBOUNCE_TIMER)
+        {
+            return;
+        }
+        tick_pressed = tick_cur;
+
+        // Remove old point and redraw center reference point
+        if (map_selected_point[map_selected_point_idx].x != 0)
+        {
+            ILI9488_FillCircle(map_selected_point[map_selected_point_idx].x,
+                               map_selected_point[map_selected_point_idx].y, 3, BLACK);
+            ILI9488_FillCircle(map_center_point.x, map_center_point.y, 3, map_center_point.color);
+        }
+
+        map_selected_point[map_selected_point_idx].x = x;
+        map_selected_point[map_selected_point_idx].y = y;
+        map_selected_point[map_selected_point_idx].color = map_selected_point_idx == 0 ? BLUE : CYAN;
+        ILI9488_FillCircle(x, y, 3, map_selected_point[map_selected_point_idx].color);
+        _DrawDistanceInfo(&map_selected_point[0], &map_selected_point[1]);
+        map_selected_point_idx = (map_selected_point_idx + 1) % 2;
     }
 }
 
@@ -502,7 +496,7 @@ static void _DrawQualityGradient(void)
                     BLACK);
     ILI9488_Orientation(ILI9488_Orientation_180);
     ILI9488_CString(10, 5, MAP_QUALITY_GRADIENT_H + MAP_QUALITY_GRADIENT_Y + 5, 10, "QUALITY(%)", Font16, 1, WHITE,
-                    BLACK);
+    BLACK);
     ILI9488_Orientation(ILI9488_Orientation_90);
 }
 
@@ -513,7 +507,7 @@ static void _DrawQualityMinimum(uint8_t quality)
 
     ILI9488_CString(ILI9488_HEIGHT - MAP_TOOLBAR_WIDTH + 1, 130, ILI9488_HEIGHT, 130, "MIN", Font16, 1, WHITE, BLACK);
     ILI9488_CString(ILI9488_HEIGHT - MAP_TOOLBAR_WIDTH + 1, 155, ILI9488_HEIGHT, 175, quality_txt, Font16, 1, WHITE,
-                    BLACK);
+    BLACK);
     // Sign -
     ILI9488_DrawBorder(MAP_BUTTON_QUAL_MINUS_X, MAP_BUTTON_QUAL_MINUS_Y,
     MAP_BUTTON_QUAL_MINUS_W,
@@ -551,7 +545,7 @@ static void _DrawPersistanceButtons(map_persistence_mode_e mode)
     }
 
     ILI9488_CString(ILI9488_HEIGHT - MAP_TOOLBAR_WIDTH + 1, 190, ILI9488_HEIGHT, 190, "PERSIS", Font16, 1, WHITE,
-                    BLACK);
+    BLACK);
     ILI9488_CString(MAP_BUTTON_PERS_MODE_X, MAP_BUTTON_PERS_MODE_Y,
     ILI9488_HEIGHT - 4,
                     MAP_BUTTON_PERS_MODE_Y + MAP_BUTTON_PERS_MODE_H - 1, str, Font16, 1,
