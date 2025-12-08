@@ -14,8 +14,8 @@
 
 typedef struct __attribute__((packed))
 {
-    uint8_t model_sub : 4;
-    uint8_t model_major : 4;
+    uint8_t model_sub :4;
+    uint8_t model_major :4;
     uint8_t fw_minor;
     uint8_t fw_major;
     uint8_t hardware;
@@ -43,21 +43,21 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    uint8_t start : 2;
-    uint8_t quality : 6;
-    uint16_t check : 1;
-    uint16_t angle : 15;
+    uint8_t start :2;
+    uint8_t quality :6;
+    uint16_t check :1;
+    uint16_t angle :15;
     uint16_t distance;
 } rplidar_measurement_t;
 
 typedef struct __attribute__((packed))
 {
-    uint8_t checksum1 : 4;
-    uint8_t sync1 : 4;
-    uint8_t checksum2 : 4;
-    uint8_t sync2 : 4;
-    uint16_t angle : 15;
-    uint16_t start : 1;
+    uint8_t checksum1 :4;
+    uint8_t sync1 :4;
+    uint8_t checksum2 :4;
+    uint8_t sync2 :4;
+    uint16_t angle :15;
+    uint16_t start :1;
     uint16_t distance[40];
 } rplidar_dense_measurements_t;
 
@@ -183,7 +183,8 @@ bool RPLIDAR_RequestSampleRate(rplidar_samplerate_t *samplerate, uint32_t timeou
  * If a NULL pointer is provided, the function will return immediately and the `RPLIDAR_OnConfiguration`
  * callback will be called with the response.
  */
-bool RPLIDAR_RequestConfiguration(uint32_t type, uint8_t *payload, uint16_t payload_size, rplidar_configuration_t *config, uint32_t timeout);
+bool RPLIDAR_RequestConfiguration(uint32_t type, uint8_t *payload, uint16_t payload_size,
+                                  rplidar_configuration_t *config, uint32_t timeout);
 
 void RPLIDAR_OnSingleMeasurement(rplidar_measurement_t *measurement);
 void RPLIDAR_OnDenseMeasurements(rplidar_dense_measurements_t *measurement);
