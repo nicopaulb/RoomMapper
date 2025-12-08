@@ -36,9 +36,9 @@ static uint8_t dispBuffer1[BUFFER_SIZE];
 static uint8_t dispBuffer2[BUFFER_SIZE];
 static uint8_t *dispBuffer = dispBuffer1;
 
-static void ILI9488_Transmit(uint8_t *data, uint16_t dataSize, bool command);
-static void ILI9488_WriteCommand(uint8_t cmd);
-static void ILI9488_WriteData(uint8_t *data, size_t size);
+static void _Transmit(const uint8_t *data, uint16_t dataSize, bool command);
+static void _WriteCommand(uint8_t cmd);
+static void _WriteData(const uint8_t *data, size_t size);
 static void ILI9488_Reset();
 
 void ILI9488_Init(ILI9488_Config_t conf, ILI9488_Orientation_e orientation)
@@ -49,17 +49,17 @@ void ILI9488_Init(ILI9488_Config_t conf, ILI9488_Orientation_e orientation)
 
 	ILI9488_Reset();
 
-	ILI9488_WriteCommand(ILI9488_PIXEL_FORMAT);
+	_WriteCommand(ILI9488_PIXEL_FORMAT);
 	data[0] = 0x66;		// RGB666
-	ILI9488_WriteData(data, 1);
+	_WriteData(data, 1);
 
-	ILI9488_WriteCommand(ILI9488_RGB_INTERFACE);
+	_WriteCommand(ILI9488_RGB_INTERFACE);
 	data[0] = 0x80;
-	ILI9488_WriteData(data, 1);
+	_WriteData(data, 1);
 
-	ILI9488_WriteCommand(ILI9488_SLEEP_OUT);
+	_WriteCommand(ILI9488_SLEEP_OUT);
 	HAL_Delay(120);
-	ILI9488_WriteCommand(ILI9488_DISPLAY_ON);
+	_WriteCommand(ILI9488_DISPLAY_ON);
 
 	ILI9488_Orientation(orientation);
 }
@@ -90,8 +90,8 @@ void ILI9488_Orientation(ILI9488_Orientation_e orientation)
 		ili9488_width = ILI9488_HEIGHT;
 		break;
 	}
-	ILI9488_WriteCommand(ILI9488_MADCTL);
-	ILI9488_WriteData(data, 1);
+	_WriteCommand(ILI9488_MADCTL);
+	_WriteData(data, 1);
 	orientation_cur = orientation;
 }
 
@@ -104,16 +104,16 @@ void ILI9488_SetAddressWindow(uint16_t x1, uint16_t y1, uint16_t x2,
 	data[1] = (x1 & 0xFF);
 	data[2] = (x2 & 0xFF00) >> 8;
 	data[3] = (x2 & 0xFF);
-	ILI9488_WriteCommand(ILI9488_COLUMN_ADDR);
-	ILI9488_WriteData(data, 4);
+	_WriteCommand(ILI9488_COLUMN_ADDR);
+	_WriteData(data, 4);
 
 	data[0] = (y1 & 0xFF00) >> 8;
 	data[1] = (y1 & 0xFF);
 	data[2] = (y2 & 0xFF00) >> 8;
 	data[3] = (y2 & 0xFF);
-	ILI9488_WriteCommand(ILI9488_PAGE_ADDR);
-	ILI9488_WriteData(data, 4);
-	ILI9488_WriteCommand(ILI9488_MEMWR);
+	_WriteCommand(ILI9488_PAGE_ADDR);
+	_WriteData(data, 4);
+	_WriteCommand(ILI9488_MEMWR);
 }
 
 void ILI9488_FillArea(uint16_t x1, uint16_t y1, uint16_t w, uint16_t h,
@@ -162,9 +162,9 @@ void ILI9488_FillArea(uint16_t x1, uint16_t y1, uint16_t w, uint16_t h,
 	times = (totalDataSize / dataSize);
 	for (uint16_t i = 0; i < times; i++)
 	{
-		ILI9488_WriteData(dispBuffer, dataSize);
+		_WriteData(dispBuffer, dataSize);
 	}
-	ILI9488_WriteData(dispBuffer, (totalDataSize - (times * dataSize)));
+	_WriteData(dispBuffer, (totalDataSize - (times * dataSize)));
 
 	dispBuffer = (dispBuffer == dispBuffer1 ? dispBuffer2 : dispBuffer1);
 }
@@ -262,10 +262,10 @@ void ILI9488_FillCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color)
 }
 
 void ILI9488_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
-		uint8_t *data, uint32_t size)
+		const uint8_t *data, uint32_t size)
 {
 	ILI9488_SetAddressWindow(x, y, w + x - 1, h + y - 1);
-	ILI9488_WriteData(data, size);
+	_WriteData(data, size);
 }
 
 /***********************
@@ -352,7 +352,7 @@ void ILI9488_WChar(uint16_t x, uint16_t y, char ch, sFONT font, uint8_t size,
 	}
 
 	ILI9488_SetAddressWindow(x, y, x + wsize - 1, y + font.Height - 1);
-	ILI9488_WriteData(dispBuffer, bufSize);
+	_WriteData(dispBuffer, bufSize);
 	dispBuffer = (dispBuffer == dispBuffer1 ? dispBuffer2 : dispBuffer1); // swapping buffer
 
 }
@@ -434,7 +434,7 @@ void ILI9488_CString(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1,
 	ILI9488_WString(x, y, str, font, size, color, bgcolor);
 }
 
-static void ILI9488_Transmit(uint8_t *data, uint16_t dataSize, bool command)
+static void _Transmit(const uint8_t *data, uint16_t dataSize, bool command)
 {
 
 	while (HAL_SPI_GetState(config.spi) != HAL_SPI_STATE_READY)
@@ -454,14 +454,14 @@ static void ILI9488_Transmit(uint8_t *data, uint16_t dataSize, bool command)
 	}
 }
 
-static void ILI9488_WriteCommand(uint8_t cmd)
+static void _WriteCommand(uint8_t cmd)
 {
-	ILI9488_Transmit(&cmd, sizeof(cmd), true);
+	_Transmit(&cmd, sizeof(cmd), true);
 }
 
-static void ILI9488_WriteData(uint8_t *data, size_t size)
+static void _WriteData(const uint8_t *data, size_t size)
 {
-	ILI9488_Transmit(data, size, false);
+	_Transmit(data, size, false);
 }
 
 static void ILI9488_Reset()

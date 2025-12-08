@@ -67,5 +67,5 @@ void ILI9488_WString(uint16_t x, uint16_t y, const char *str, sFONT font, uint8_
                      uint16_t bgcolor);
 void ILI9488_CString(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, const char *str, sFONT font, uint8_t size,
                      uint16_t color, uint16_t bgcolor);
-void ILI9488_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t *data, uint32_t size);
+void ILI9488_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint32_t size);
 #endif /* INC_ILI9488_H */

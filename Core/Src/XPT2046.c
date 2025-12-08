@@ -21,7 +21,7 @@ extern ILI9488_Orientation_e orientation_cur;
 static XPT2046_Config_t config;
 static volatile bool touched = false;
 
-static uint16_t XPT2046_PollAxis(uint8_t axis);
+static uint16_t _PollAxis(uint8_t axis);
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
@@ -47,7 +47,7 @@ bool XPT2046_PollTouch()
 
 	touch = 0;
 	for (k = 0; k < (1 << pollingLevel); k++)
-		touch += XPT2046_PollAxis(Z_AXIS);
+		touch += _PollAxis(Z_AXIS);
 	touch >>= pollingLevel;
 
 	return (touch > Z_THRESHOLD);
@@ -62,7 +62,7 @@ bool XPT2046_GetTouchPosition(uint16_t *x, uint16_t *y)
 
 	touch = 0;
 	for (k = 0; k < (1 << pollingLevel); k++)
-		touch += XPT2046_PollAxis(Z_AXIS);
+		touch += _PollAxis(Z_AXIS);
 	touch >>= pollingLevel;
 	if (touch <= Z_THRESHOLD)
 	{
@@ -71,7 +71,7 @@ bool XPT2046_GetTouchPosition(uint16_t *x, uint16_t *y)
 
 	touch = 0;
 	for (k = 0; k < (1 << pollingLevel); k++)
-		touch += XPT2046_PollAxis(X_AXIS);
+		touch += _PollAxis(X_AXIS);
 	touch >>= pollingLevel;
 	if (touch <= X_THRESHOLD)
 	{
@@ -81,7 +81,7 @@ bool XPT2046_GetTouchPosition(uint16_t *x, uint16_t *y)
 
 	touch = 0;
 	for (k = 0; k < (1 << pollingLevel); k++)
-		touch += XPT2046_PollAxis(Y_AXIS);
+		touch += _PollAxis(Y_AXIS);
 	touch >>= pollingLevel;
 
 	touchy = (AY * touch + BY);
@@ -138,8 +138,8 @@ bool Touch_WaitForUntouch(uint16_t timeout)
 			return false;
 		}
 
-		if (XPT2046_PollAxis(Z_AXIS) <= Z_THRESHOLD
-				|| XPT2046_PollAxis(X_AXIS) <= X_THRESHOLD)
+		if (_PollAxis(Z_AXIS) <= Z_THRESHOLD
+				|| _PollAxis(X_AXIS) <= X_THRESHOLD)
 		{
 			return true;
 		}
@@ -166,7 +166,7 @@ bool XPT2046_GotATouch(void)
 	return result;
 }
 
-static uint16_t XPT2046_PollAxis(uint8_t axis)
+static uint16_t _PollAxis(uint8_t axis)
 {
 	uint8_t poll[2] =
 	{ 0, 0 };
