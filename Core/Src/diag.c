@@ -16,8 +16,15 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "diag.h"
+#include "menu.h"
 #include "rplidar.h"
 #include "ILI9488.h"
+
+#define DIAG_BUTTON_CLOSE_X (ILI9488_HEIGHT - 50)
+#define DIAG_BUTTON_CLOSE_Y 20
+#define DIAG_BUTTON_CLOSE_W 24
+#define DIAG_BUTTON_CLOSE_H 24
 
 #define DIAG_BUTTON_HEALTH_X 90
 #define DIAG_BUTTON_HEALTH_Y 70
@@ -50,6 +57,7 @@ void DIAG_Show(void)
 {
     ILI9488_FillScreen(ORANGE);
     ILI9488_CString(0, 20, ILI9488_HEIGHT, 20, "DIAGNOSTICS", Font24, 1, WHITE, ORANGE);
+    ILI9488_DrawImage(DIAG_BUTTON_CLOSE_X, DIAG_BUTTON_CLOSE_Y, DIAG_BUTTON_CLOSE_W, DIAG_BUTTON_CLOSE_H, cross, sizeof(cross));
 
     ILI9488_CString(DIAG_BUTTON_HEALTH_X, DIAG_BUTTON_HEALTH_Y, DIAG_BUTTON_HEALTH_W + DIAG_BUTTON_HEALTH_X - 1,
     DIAG_BUTTON_HEALTH_Y + DIAG_BUTTON_HEALTH_H - 1,
@@ -108,6 +116,17 @@ void DIAG_Touch(uint16_t x, uint16_t y)
         }
         tick_pressed = tick_cur;
         _TestRate();
+    }
+    else if (x >= DIAG_BUTTON_CLOSE_X && x < DIAG_BUTTON_CLOSE_X + DIAG_BUTTON_CLOSE_W && y >= DIAG_BUTTON_CLOSE_Y
+            && y < DIAG_BUTTON_CLOSE_Y + DIAG_BUTTON_CLOSE_H)
+    {
+        static uint32_t tick_pressed = 0;
+        if (tick_cur - tick_pressed < DIAG_BUTTON_DEBOUNCE_TIMER)
+        {
+            return;
+        }
+        tick_pressed = tick_cur;
+        MENU_SetScreen(MENU_SCREEN_MAIN);
     }
 }
 

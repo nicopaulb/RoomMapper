@@ -15,10 +15,11 @@ typedef enum
     MENU_SCREEN_MAIN, MENU_SCREEN_MAP, MENU_SCREEN_DIAG
 } menu_screen_e;
 
+extern const uint8_t logo[12288];
+
 void MENU_SetScreen(menu_screen_e screen);
 void MENU_HandleTouch(void);
 void MENU_UpdateScreen(void);
 
-extern const uint8_t logo[12288];
 
 #endif /* INC_MENU_H_ */

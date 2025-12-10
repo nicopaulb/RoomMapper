@@ -10,6 +10,9 @@
 
 #include <stdint.h>
 
+extern const uint8_t cross[1728];
+
 void DIAG_Show(void);
+void DIAG_Touch(uint16_t x, uint16_t y);
 
 #endif /* INC_DIAG_H_ */
