@@ -186,7 +186,21 @@ bool RPLIDAR_RequestSampleRate(rplidar_samplerate_t *samplerate, uint32_t timeou
 bool RPLIDAR_RequestConfiguration(uint32_t type, uint8_t *payload, uint16_t payload_size,
                                   rplidar_configuration_t *config, uint32_t timeout);
 
+/**
+ * @brief Callback called when a legacy measurement is received.
+ * @param measurement Measurement made by the RPLIDAR.
+ *
+ * Measurement distance field should be divided by 4.0 to get the real distance in mm.
+ * Measurement angle field should be divided by 64.0 to get the real angle in °.
+ */
 void RPLIDAR_OnSingleMeasurement(rplidar_measurement_t *measurement);
+/**
+ * @brief Callback called when a dense measurement is received.
+ * @param measurement Measurement made by the RPLIDAR.
+ *
+ * Measurement distance field should be divided by 4.0 to get the real distance in mm.
+ * Measurement angle field should be divided by 64.0 to get the real angle in °.
+ */
 void RPLIDAR_OnDenseMeasurements(rplidar_dense_measurements_t *measurement);
 void RPLIDAR_OnDeviceInfo(rplidar_info_t *info);
 void RPLIDAR_OnHealth(rplidar_health_t *health);
