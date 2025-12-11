@@ -60,23 +60,29 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define LED_BLUE_Pin GPIO_PIN_13
 #define LED_BLUE_GPIO_Port GPIOC
-#define TOUCH_INT_Pin GPIO_PIN_3
-#define TOUCH_INT_GPIO_Port GPIOA
-#define TOUCH_INT_EXTI_IRQn EXTI3_IRQn
-#define DISPL_SCK_Pin GPIO_PIN_5
-#define DISPL_SCK_GPIO_Port GPIOA
-#define DISPL_MOSI_Pin GPIO_PIN_7
-#define DISPL_MOSI_GPIO_Port GPIOA
-#define DISPL_RST_Pin GPIO_PIN_2
-#define DISPL_RST_GPIO_Port GPIOB
-#define DISPL_DC_Pin GPIO_PIN_10
-#define DISPL_DC_GPIO_Port GPIOB
+#define BUZZER_PWM_Pin GPIO_PIN_1
+#define BUZZER_PWM_GPIO_Port GPIOA
+#define RPLIDAR_TX_Pin GPIO_PIN_2
+#define RPLIDAR_TX_GPIO_Port GPIOA
+#define RPLIDARD_RX_Pin GPIO_PIN_3
+#define RPLIDARD_RX_GPIO_Port GPIOA
+#define TOUCH_INT_Pin GPIO_PIN_12
+#define TOUCH_INT_GPIO_Port GPIOB
+#define TOUCH_INT_EXTI_IRQn EXTI15_10_IRQn
 #define TOUCH_SCK_Pin GPIO_PIN_13
 #define TOUCH_SCK_GPIO_Port GPIOB
 #define TOUCH_MISO_Pin GPIO_PIN_14
 #define TOUCH_MISO_GPIO_Port GPIOB
 #define TOUCH_MOSI_Pin GPIO_PIN_15
 #define TOUCH_MOSI_GPIO_Port GPIOB
+#define DISPL_SCK_Pin GPIO_PIN_3
+#define DISPL_SCK_GPIO_Port GPIOB
+#define DISPL_MOSI_Pin GPIO_PIN_5
+#define DISPL_MOSI_GPIO_Port GPIOB
+#define DISPL_DC_Pin GPIO_PIN_6
+#define DISPL_DC_GPIO_Port GPIOB
+#define DISPL_RST_Pin GPIO_PIN_7
+#define DISPL_RST_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
