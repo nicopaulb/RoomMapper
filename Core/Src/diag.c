@@ -20,6 +20,7 @@
 #include "menu.h"
 #include "rplidar.h"
 #include "ILI9488.h"
+#include "buzzer.h"
 
 #define DIAG_BUTTON_CLOSE_X (ILI9488_HEIGHT - 50)
 #define DIAG_BUTTON_CLOSE_Y 20
@@ -92,6 +93,7 @@ void DIAG_Touch(uint16_t x, uint16_t y)
             return;
         }
         tick_pressed = tick_cur;
+        Buzzer_Play_Menu_Touch();
 
         _TestHealth();
     }
@@ -104,6 +106,8 @@ void DIAG_Touch(uint16_t x, uint16_t y)
             return;
         }
         tick_pressed = tick_cur;
+        Buzzer_Play_Menu_Touch();
+
         _TestDevice();
     }
     else if (x >= DIAG_BUTTON_SAMPLE_X && x < DIAG_BUTTON_SAMPLE_X + DIAG_BUTTON_SAMPLE_W && y >= DIAG_BUTTON_SAMPLE_Y
@@ -115,6 +119,8 @@ void DIAG_Touch(uint16_t x, uint16_t y)
             return;
         }
         tick_pressed = tick_cur;
+        Buzzer_Play_Menu_Touch();
+
         _TestRate();
     }
     else if (x >= DIAG_BUTTON_CLOSE_X && x < DIAG_BUTTON_CLOSE_X + DIAG_BUTTON_CLOSE_W && y >= DIAG_BUTTON_CLOSE_Y
@@ -126,6 +132,8 @@ void DIAG_Touch(uint16_t x, uint16_t y)
             return;
         }
         tick_pressed = tick_cur;
+        Buzzer_Play_Menu_Out();
+
         MENU_SetScreen(MENU_SCREEN_MAIN);
     }
 }

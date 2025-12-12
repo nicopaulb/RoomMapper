@@ -16,6 +16,7 @@ typedef enum
 } menu_screen_e;
 
 extern const uint8_t logo[12288];
+extern const uint8_t volume[1728];
 
 void MENU_SetScreen(menu_screen_e screen);
 void MENU_HandleTouch(void);

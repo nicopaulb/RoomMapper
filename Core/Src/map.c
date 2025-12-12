@@ -14,6 +14,7 @@
 #include "rplidar.h"
 #include "ILI9488.h"
 #include "XPT2046.h"
+#include "buzzer.h"
 
 #define SAMPLE_BUF_SIZE 1024
 #define SAMPLE_QUALITY_DEFAULT 18
@@ -186,6 +187,7 @@ void MAP_Touch(uint16_t x, uint16_t y)
             return;
         }
         tick_pressed = tick_cur;
+        Buzzer_Play_Menu_Touch();
 
         static bool running = false;
         if (running)
@@ -209,6 +211,7 @@ void MAP_Touch(uint16_t x, uint16_t y)
             return;
         }
         tick_pressed = tick_cur;
+        Buzzer_Play_Menu_Touch();
 
         map_scale_mode_e new_mode = (map_scale_mode + 1) % MAP_SCALE_MAX;
         MAP_SetScaleMode(new_mode);
@@ -228,7 +231,6 @@ void MAP_Touch(uint16_t x, uint16_t y)
         tick_pressed = tick_cur;
 
         uint8_t new_quality = map_quality_min < 6 ? 0 : (map_quality_min - 6);
-
         MAP_SetQuality(new_quality);
         _DrawQualityMinimum(map_quality_min);
         MAP_ClearPoints(true);
@@ -243,9 +245,9 @@ void MAP_Touch(uint16_t x, uint16_t y)
             return;
         }
         tick_pressed = tick_cur;
+        Buzzer_Play_Menu_Touch();
 
         uint8_t new_quality = map_quality_min > 57 ? 63 : (map_quality_min + 6);
-
         MAP_SetQuality(new_quality);
         _DrawQualityMinimum(map_quality_min);
         MAP_ClearPoints(true);
@@ -260,6 +262,7 @@ void MAP_Touch(uint16_t x, uint16_t y)
             return;
         }
         tick_pressed = tick_cur;
+        Buzzer_Play_Menu_Touch();
 
         map_persistence_mode_e new_mode = (map_persistence_mode + 1) % MAP_PERSIST_MAX;
         MAP_SetPersistanceMode(new_mode);
@@ -276,6 +279,8 @@ void MAP_Touch(uint16_t x, uint16_t y)
             return;
         }
         tick_pressed = tick_cur;
+        Buzzer_Play_Menu_Touch();
+
         MAP_ClearPoints(true);
     }
     else if (x >= MAP_TOOLBAR_WIDTH && x <= (MAP_TOOLBAR_WIDTH + MAP_SIZE))
@@ -287,6 +292,7 @@ void MAP_Touch(uint16_t x, uint16_t y)
             return;
         }
         tick_pressed = tick_cur;
+        Buzzer_Play_Menu_Touch();
 
         // Remove old point and redraw center reference point
         if (map_selected_point[map_selected_point_idx].x != 0)
